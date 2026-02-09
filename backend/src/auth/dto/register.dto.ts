@@ -1,7 +1,10 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail()
+  @Matches(/@ncs\.com\.sg$/i, {
+    message: 'Only NCS email addresses (@ncs.com.sg) are allowed',
+  })
   email: string;
 
   @IsString()
