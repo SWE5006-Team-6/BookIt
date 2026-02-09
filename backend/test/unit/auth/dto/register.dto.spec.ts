@@ -7,9 +7,9 @@ describe('RegisterDto', () => {
     return plainToInstance(RegisterDto, partial);
   }
 
-  it('should pass with valid email, password, and displayName', async () => {
+  it('should pass with valid NCS email, password, and displayName', async () => {
     const dto = toDto({
-      email: 'user@example.com',
+      email: 'user@ncs.com.sg',
       password: 'password123',
       displayName: 'Test User',
     });
@@ -20,12 +20,24 @@ describe('RegisterDto', () => {
 
   it('should pass without displayName (optional field)', async () => {
     const dto = toDto({
-      email: 'user@example.com',
+      email: 'user@ncs.com.sg',
       password: 'password123',
     });
 
     const errors = await validate(dto);
     expect(errors).toHaveLength(0);
+  });
+
+  it('should fail when email is not an NCS domain', async () => {
+    const dto = toDto({
+      email: 'user@gmail.com',
+      password: 'password123',
+    });
+
+    const errors = await validate(dto);
+    const emailError = errors.find((e) => e.property === 'email');
+    expect(emailError).toBeDefined();
+    expect(emailError!.constraints).toHaveProperty('matches');
   });
 
   it('should fail when email is invalid', async () => {
@@ -53,7 +65,7 @@ describe('RegisterDto', () => {
 
   it('should fail when password is shorter than 8 characters', async () => {
     const dto = toDto({
-      email: 'user@example.com',
+      email: 'user@ncs.com.sg',
       password: 'short',
     });
 
@@ -65,7 +77,7 @@ describe('RegisterDto', () => {
 
   it('should fail when password is missing', async () => {
     const dto = toDto({
-      email: 'user@example.com',
+      email: 'user@ncs.com.sg',
     });
 
     const errors = await validate(dto);
@@ -75,7 +87,7 @@ describe('RegisterDto', () => {
 
   it('should fail when password is empty string', async () => {
     const dto = toDto({
-      email: 'user@example.com',
+      email: 'user@ncs.com.sg',
       password: '',
     });
 
