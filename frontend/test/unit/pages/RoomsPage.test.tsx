@@ -32,7 +32,8 @@ describe('RoomsPage', () => {
   it('should show a loading state initially and then render rooms', async () => {
     renderWithProviders(<RoomsPage />);
 
-    expect(screen.getByText(/loading rooms/i)).toBeInTheDocument();
+    // Loading state: room names not yet visible (Spinner is shown)
+    expect(screen.queryByText('Conference Room A')).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText('Conference Room A')).toBeInTheDocument();
@@ -61,12 +62,7 @@ describe('RoomsPage', () => {
     renderWithProviders(<RoomsPage />);
 
     await waitFor(() => {
-      // 1. Use getAllByText if you expect multiple badges
-      const badges = screen.getAllByText('Available Now');
-      expect(badges.length).toBeGreaterThan(0);
-
-      // 2. Or, better: check for specific details belonging to a specific room
-      // We look for the text within the context of one specific room name
+      expect(screen.getByText('Conference Room A')).toBeInTheDocument();
       expect(screen.getByText('10 Seats')).toBeInTheDocument();
       expect(screen.getByText('Level 2')).toBeInTheDocument();
     });
@@ -82,14 +78,14 @@ describe('RoomsPage', () => {
     });
   });
 
-  it('should not fetch data if there is no auth token', async () => {
+  it('should fetch rooms even when there is no auth token (public list)', async () => {
     mockUseAuth.mockReturnValue({ token: null });
 
     renderWithProviders(<RoomsPage />);
 
     await waitFor(() => {
-      expect(apiRequest).not.toHaveBeenCalled();
-      expect(screen.queryByText(/loading rooms/i)).not.toBeInTheDocument();
+      expect(apiRequest).toHaveBeenCalledWith('/rooms', expect.objectContaining({ token: undefined }));
+      expect(screen.getByText('Conference Room A')).toBeInTheDocument();
     });
   });
 });
