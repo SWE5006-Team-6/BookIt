@@ -3,11 +3,13 @@ import { Box, Spinner } from '@chakra-ui/react';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { RoomsPage } from './pages/RoomsPage';
 import { RoomDetailsPage } from './pages/RoomDetailsPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './layouts/AppLayout';
 import { useAuth } from './contexts/AuthContext';
+import QuickBookPage from './pages/QuickBookPage';
+import RoomsPage from './pages/RoomsPage';
+import { MyBookingsPage } from './pages/MyBookingsPage';
 
 function App() {
   const { user, isLoading } = useAuth();
@@ -15,7 +17,7 @@ function App() {
   if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" height="100vh" bg="gray.50">
-        <Spinner size="xl" color="#4F46E5" thickness="4px" />
+        <Spinner size="xl" color="#4F46E5" />
       </Box>
     );
   }
@@ -43,8 +45,8 @@ function App() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/rooms" element={<RoomsPage />} />
         <Route path="/rooms/:id" element={<RoomDetailsPage />} />
-        {/* Future protected routes go here, e.g.: */}
-        {/* <Route path="/bookings" element={<BookingsPage />} /> */}
+        <Route path="/quick-book" element={<QuickBookPage />} />
+        <Route path="/bookings" element={<MyBookingsPage />} />
       </Route>
     </Routes>
   );
