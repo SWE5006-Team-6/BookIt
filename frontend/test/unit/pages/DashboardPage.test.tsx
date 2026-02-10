@@ -52,14 +52,14 @@ describe('DashboardPage', () => {
     expect(screen.getByText(`Welcome, ${mockUser.email}`)).toBeInTheDocument();
   });
 
-  it('should navigate to /bookings when Manage button is clicked', async () => {
+  it('should navigate to / when Manage button is clicked', async () => {
     const user = userEvent.setup();
     renderWithProviders(<DashboardPage />);
 
     const manageBtn = screen.getByRole('button', { name: /manage/i });
     await user.click(manageBtn);
 
-    expect(mockNavigate).toHaveBeenCalledWith('/bookings');
+    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
   it('should navigate to /rooms when View Rooms button is clicked', async () => {
