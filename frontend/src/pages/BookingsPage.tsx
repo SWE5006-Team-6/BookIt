@@ -22,16 +22,17 @@ import {
 	FiCheckCircle,
 	FiAlertCircle
 } from 'react-icons/fi';
+import type Booking from '../types/Booking';
 
 // Mock data based on your Booking + Room Schema
-const MOCK_BOOKINGS = [
+const MOCK_BOOKINGS : Booking[] = [
 	{
 		id: 'b1',
 		title: 'Product Sprint Planning',
 		startAt: new Date('2026-02-12T10:00:00'),
 		endAt: new Date('2026-02-12T11:30:00'),
 		status: 'CONFIRMED',
-		room: { name: 'Executive Suite', location: 'Floor 4' }
+		room: { id: '1', name: 'Grand Boardroom', capacity: 20, location: 'Penthouse', isActive: true }
 	},
 	{
 		id: 'b2',
@@ -43,7 +44,7 @@ const MOCK_BOOKINGS = [
 	}
 ];
 
-const BookingRow = ({ booking }) => {
+const BookingRow = ({ booking } : { booking: Booking }) => {
 	const isPast = new Date(booking.startAt) < new Date();
 
 	return (
