@@ -6,7 +6,6 @@ import { ProtectedRoute } from './components/ProtectedRoute.tsx';
 import { AppLayout } from './layouts/AppLayout.tsx';
 import { useAuth } from './contexts/AuthContext.tsx';
 import RoomsPage from './pages/RoomsPage.tsx';
-import BookingsPage from './pages/BookingsPage.tsx';
 import QuickBookPage from './pages/QuickBookPage.tsx';
 
 function App() {
@@ -37,7 +36,6 @@ function App() {
         }
       >
         <Route path="/" element={<DashboardPage />} />
-        <Route path="/bookings" element={<BookingsPage />} />
         <Route path="/rooms" element={<RoomsPage />} />
         <Route path="/quick-book" element={<QuickBookPage />} />
         {/* Future protected routes go here, e.g.: */}

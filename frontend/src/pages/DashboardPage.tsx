@@ -61,7 +61,7 @@ export function DashboardPage() {
                 background="#4f46e5"
                 color="white"
                 _active={{ bg: "#3730A3" }}
-                onClick={() => navigate("/bookings")}
+                onClick={() => navigate("/")}
               >Manage</Button>
             </Text>
           </Stack>
