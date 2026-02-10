@@ -1,13 +1,17 @@
 import {
   Box,
+  Button,
   Heading,
   Stack,
   Text,
 } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext.tsx';
+import { PiLightningFill } from 'react-icons/pi';
+import { useNavigate } from 'react-router';
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <Stack gap="8">
@@ -48,12 +52,17 @@ export function DashboardPage() {
           borderColor="gray.200"
         >
           <Stack gap="2">
-            <Text fontSize="sm" fontWeight="semibold" color="teal.600">
+            <Text fontSize="sm" fontWeight="semibold" color="#4F46E5">
               My Bookings
             </Text>
             <Heading size="md" color="gray.800">0</Heading>
             <Text fontSize="sm" color="gray.400">
-              Upcoming room reservations
+              <Button
+                background="#4f46e5"
+                color="white"
+                _active={{ bg: "#3730A3" }}
+                onClick={() => navigate("/")}
+              >Manage</Button>
             </Text>
           </Stack>
         </Box>
@@ -67,15 +76,30 @@ export function DashboardPage() {
           borderColor="gray.200"
         >
           <Stack gap="2">
-            <Text fontSize="sm" fontWeight="semibold" color="teal.600">
+            <Text fontSize="sm" fontWeight="semibold" color="#4F46E5">
               Available Rooms
             </Text>
             <Heading size="md" color="gray.800">--</Heading>
             <Text fontSize="sm" color="gray.400">
-              Browse and book rooms in Sprint 2
+              <Button
+                background="#4f46e5"
+                color="white"
+                _active={{ bg: "#3730A3" }}
+                onClick={() => navigate("/rooms")}
+              >View Rooms</Button>
             </Text>
           </Stack>
         </Box>
+
+        <Button 
+          background="#4f46e5"
+          color="white"
+          _active={{ bg: "#3730A3" }}
+          gridColumn={{ base: '1', md: '1 / -1' }}
+          onClick={() => navigate("/quick-book")}
+        >
+          <PiLightningFill /> Quick Book
+        </Button>
       </Box>
     </Stack>
   );
