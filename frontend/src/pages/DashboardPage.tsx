@@ -55,7 +55,11 @@ export function DashboardPage() {
             </Text>
             <Heading size="md" color="gray.800">0</Heading>
             <Text fontSize="sm" color="gray.400">
-              Upcoming room reservations
+              <Button
+                bg="teal.500"
+                color="white"
+                _active={{ bg: "teal.600" }}
+              >Manage</Button>
             </Text>
           </Stack>
         </Box>
@@ -74,7 +78,11 @@ export function DashboardPage() {
             </Text>
             <Heading size="md" color="gray.800">--</Heading>
             <Text fontSize="sm" color="gray.400">
-              Browse and book rooms in Sprint 2
+              <Button
+                bg="teal.500"
+                color="white"
+                _active={{ bg: "teal.600" }}
+              >Book</Button>
             </Text>
           </Stack>
         </Box>
