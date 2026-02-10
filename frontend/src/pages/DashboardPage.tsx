@@ -1,13 +1,16 @@
 import {
   Box,
+  Button,
   Heading,
   Stack,
   Text,
 } from '@chakra-ui/react';
-import { useAuth } from '../contexts/AuthContext.tsx';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <Stack gap="8">
@@ -66,14 +69,25 @@ export function DashboardPage() {
           borderWidth="1px"
           borderColor="gray.200"
         >
-          <Stack gap="2">
-            <Text fontSize="sm" fontWeight="semibold" color="teal.600">
-              Available Rooms
-            </Text>
-            <Heading size="md" color="gray.800">--</Heading>
-            <Text fontSize="sm" color="gray.400">
-              Browse and book rooms in Sprint 2
-            </Text>
+          <Stack gap="4">
+            <Box>
+              <Text fontSize="sm" fontWeight="semibold" color="teal.600">
+                Available Rooms
+              </Text>
+              <Heading size="md" color="gray.800">View & Book</Heading>
+              <Text fontSize="sm" color="gray.400">
+                Browse and book rooms
+              </Text>
+            </Box>
+            <Button
+              background="#4F46E5"
+              color="white"
+              _hover={{ background: '#4338CA' }}
+              width="full"
+              onClick={() => navigate('/rooms')}
+            >
+              Browse Rooms
+            </Button>
           </Stack>
         </Box>
       </Box>
