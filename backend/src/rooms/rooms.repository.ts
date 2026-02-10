@@ -19,13 +19,13 @@ interface SearchRoomsInput {
 }
 
 interface UpdateRoomInput {
-    name?: string;
-    capacity?: number;
-    location?: string | null;
-    isActive?: boolean;
-    isAvailable?: boolean;
-    reason?: string | null;
-    updatedBy: string;
+  name?: string;
+  capacity?: number;
+  location?: string | null;
+  isActive?: boolean;
+  isAvailable?: boolean;
+  reason?: string | null;
+  updatedBy: string;
 }
 
 @Injectable()
@@ -47,57 +47,57 @@ export class RoomsRepository {
   }
 
   searchAvailableRooms(input: SearchRoomsInput) {
-  const { dateTime, capacity } = input;
+    const { dateTime, capacity } = input;
 
-  return this.prisma.room.findMany({
-    where: {
-      isActive: true,
-      isAvailable: true,
-      capacity: { gte: capacity }, // change to `equals: capacity` for exact match
-      bookings: {
-        none: {
-          status: BookingStatus.CONFIRMED,
-          startAt: { lte: dateTime },
-          endAt: { gt: dateTime },
+    return this.prisma.room.findMany({
+      where: {
+        isActive: true,
+        isAvailable: true,
+        capacity: { gte: capacity }, // change to `equals: capacity` for exact match
+        bookings: {
+          none: {
+            status: BookingStatus.CONFIRMED,
+            startAt: { lte: dateTime },
+            endAt: { gt: dateTime },
+          },
         },
       },
-    },
-    orderBy: [{ capacity: 'asc' }, { name: 'asc' }],
-    select: {
-      id: true,
-      name: true,
-      capacity: true,
-      location: true,
-      isActive: true,
-      isAvailable: true,
-    },
-  });
-}
+      orderBy: [{ capacity: 'asc' }, { name: 'asc' }],
+      select: {
+        id: true,
+        name: true,
+        capacity: true,
+        location: true,
+        isActive: true,
+        isAvailable: true,
+      },
+    });
+  }
 
   findById(roomId: string) {
     return this.prisma.room.findUnique({
-        where: { id: roomId },
-    })
+      where: { id: roomId },
+    });
   }
 
   findAllRooms() {
     return this.prisma.room.findMany({
-        orderBy: [{ createdAt: 'desc' }],
-    })
+      orderBy: [{ createdAt: 'desc' }],
+    });
   }
 
   updateRoom(roomId: string, data: UpdateRoomInput) {
     return this.prisma.room.update({
-        where: { id: roomId },
-        data,
-        select: {
-            id: true,
-            name: true,
-            capacity: true,
-            location: true,
-            isActive: true,
-            isAvailable: true,
-        },
+      where: { id: roomId },
+      data,
+      select: {
+        id: true,
+        name: true,
+        capacity: true,
+        location: true,
+        isActive: true,
+        isAvailable: true,
+      },
     });
   }
 }
