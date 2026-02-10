@@ -52,8 +52,9 @@ describe('DashboardPage', () => {
   it('should fallback to email if displayName is missing', () => {
     mockUseAuth.mockReturnValue({
       user: { ...mockUser, displayName: null },
+      token: 'fake-token',
     });
-    
+
     renderWithProviders(<DashboardPage />);
     expect(screen.getByText(`Welcome, ${mockUser.email}`)).toBeInTheDocument();
   });

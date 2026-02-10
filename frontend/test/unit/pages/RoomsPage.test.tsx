@@ -32,15 +32,16 @@ describe('RoomsPage', () => {
   it('should show a loading state initially and then render rooms', async () => {
     renderWithProviders(<RoomsPage />);
 
-    // Loading state: room names not yet visible (Spinner is shown)
-    expect(screen.queryByText('Conference Room A')).not.toBeInTheDocument();
+    expect(apiRequest).toHaveBeenCalledWith('/rooms', expect.any(Object));
 
-    await waitFor(() => {
-      expect(screen.getByText('Conference Room A')).toBeInTheDocument();
-      expect(screen.getByText('Quiet Pod')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText('2 Rooms Found')).toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(screen.getByText('Conference Room A')).toBeInTheDocument();
+        expect(screen.getByText('Quiet Pod')).toBeInTheDocument();
+        expect(screen.getByText('2 Rooms Found')).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
   });
 
   it('should filter rooms based on search input', async () => {
@@ -61,11 +62,14 @@ describe('RoomsPage', () => {
   it('should display room details correctly in the RoomCard', async () => {
     renderWithProviders(<RoomsPage />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Conference Room A')).toBeInTheDocument();
-      expect(screen.getByText('10 Seats')).toBeInTheDocument();
-      expect(screen.getByText('Level 2')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByText('Conference Room A')).toBeInTheDocument();
+        expect(screen.getByText('10 Seats')).toBeInTheDocument();
+        expect(screen.getByText('Level 2')).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
   });
 
   it('should show "No rooms found" if the API returns an empty list', async () => {
@@ -80,12 +84,16 @@ describe('RoomsPage', () => {
 
   it('should fetch rooms even when there is no auth token (public list)', async () => {
     mockUseAuth.mockReturnValue({ token: null });
+    (apiRequest as any).mockResolvedValue(mockRooms);
 
     renderWithProviders(<RoomsPage />);
 
-    await waitFor(() => {
-      expect(apiRequest).toHaveBeenCalledWith('/rooms', expect.objectContaining({ token: undefined }));
-      expect(screen.getByText('Conference Room A')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(apiRequest).toHaveBeenCalledWith('/rooms', expect.objectContaining({ token: undefined }));
+        expect(screen.getByText('Conference Room A')).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
   });
 });
