@@ -36,7 +36,7 @@ const RoomCard = ({ room }) => {
 			_hover={{ shadow: 'xl', borderColor: 'blue.500', transform: 'scale(1.02)' }}
 		>
 			{/* Decorative Room Header */}
-			<Box h="120px" bg="blue.600" p="6" position="relative">
+			<Box h="120px" bg="#4f46e5" p="6" position="relative">
 				<Badge
 					position="absolute"
 					top="4"
@@ -57,7 +57,7 @@ const RoomCard = ({ room }) => {
 					<VStack align="start" gap="0">
 						<Text fontSize="xs" color="fg.muted" fontWeight="bold" textTransform="uppercase">Capacity</Text>
 						<HStack gap="1">
-							<Icon as={FiUsers} size="sm" color="blue.500" />
+							<Icon as={FiUsers} size="sm" color="#4f46e5" />
 							<Text fontWeight="medium">{room.capacity} Seats</Text>
 						</HStack>
 					</VStack>
@@ -67,7 +67,7 @@ const RoomCard = ({ room }) => {
 					<VStack align="start" gap="0">
 						<Text fontSize="xs" color="fg.muted" fontWeight="bold" textTransform="uppercase">Location</Text>
 						<HStack gap="1">
-							<Icon as={FiMapPin} size="sm" color="blue.500" />
+							<Icon as={FiMapPin} size="sm" color="#4f46e5" />
 							<Text fontWeight="medium">{room.location}</Text>
 						</HStack>
 					</VStack>
@@ -77,7 +77,7 @@ const RoomCard = ({ room }) => {
 					Equipped with high-speed Wi-Fi, 4K Monitor, and Video Conferencing tools.
 				</Text>
 
-				<Button width="full" colorPalette="blue" size="lg" mt="2">
+				<Button width="full" backgroundColor="#4f46e5" size="lg" mt="2">
 					Check Schedule
 				</Button>
 			</VStack>
@@ -129,7 +129,7 @@ export default function RoomsPage() {
 						<Input type="datetime-local unstyled" size="sm" />
 					</HStack>
 
-					<Button colorPalette="blue" px="8" width={{ base: 'full', lg: 'auto' }}>
+					<Button backgroundColor="#4f46e5" px="8" width={{ base: 'full', lg: 'auto' }}>
 						Find Available
 					</Button>
 				</Stack>

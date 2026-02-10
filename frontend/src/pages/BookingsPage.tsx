@@ -59,10 +59,10 @@ const BookingRow = ({ booking }) => {
 			<Stack direction={{ base: 'column', md: 'row' }} justify="space-between" align={{ md: 'center' }} gap="6">
 				<HStack gap="4" flex="1">
 					<Box
-						bg={isPast ? "gray.100" : "blue.50"}
+						bg={isPast ? "gray.100" : "#cccaffa1"}
 						p="3"
 						borderRadius="lg"
-						color={isPast ? "gray.500" : "blue.600"}
+						color={isPast ? "gray.500" : "#4f46e5"}
 					>
 						<FiCalendar size="24px" />
 					</Box>
@@ -80,7 +80,7 @@ const BookingRow = ({ booking }) => {
 				<Stack direction={{ base: 'row', md: 'row' }} gap={{ base: '4', md: '12' }} align="center">
 					<VStack align={{ base: 'start', md: 'center' }} gap="0">
 						<HStack gap="1">
-							<Icon as={FiClock} size="xs" color="blue.500" />
+							<Icon as={FiClock} size="xs" color="#4f46e5" />
 							<Text fontWeight="bold" fontSize="sm">
 								{booking.startAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
 							</Text>
@@ -133,7 +133,7 @@ export default function BookingsPage() {
 							<Text fontSize="md">You have 2 upcoming reservations</Text>
 						</HStack>
 					</VStack>
-					<Button colorPalette="blue" size="md">
+					<Button backgroundColor="#4f46e5" size="md">
 						New Booking
 					</Button>
 				</Flex>
