@@ -6,6 +6,7 @@ import {
   Text,
 } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext.tsx';
+import { PiLightningFill } from 'react-icons/pi';
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -84,7 +85,7 @@ export function DashboardPage() {
           _active={{ bg: "teal.600" }}
           gridColumn={{ base: '1', md: '1 / -1' }}
         >
-          Quick Book
+          <PiLightningFill /> Quick Book
         </Button>
       </Box>
     </Stack>
