@@ -154,13 +154,18 @@ export default function RoomsPage() {
 				</Flex>
 
 				{/* Grid */}
-				<SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap="8" pb="20">
+				{isLoading ? (
+					<Text>Loading rooms...</Text>
+				) : rooms.length === 0 ? (
+					<Text>No rooms found.</Text>
+				) : <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap="8" pb="20">
 					{rooms
 						.filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
 						.map((room) => (
 							<RoomCard key={room.id} room={room} />
 						))}
-				</SimpleGrid>
+				</SimpleGrid>}
+
 			</Container>
 		</Box>
 	);
