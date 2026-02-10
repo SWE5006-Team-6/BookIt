@@ -7,9 +7,11 @@ import {
 } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext.tsx';
 import { PiLightningFill } from 'react-icons/pi';
+import { useNavigate } from 'react-router';
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <Stack gap="8">
@@ -59,6 +61,7 @@ export function DashboardPage() {
                 bg="teal.500"
                 color="white"
                 _active={{ bg: "teal.600" }}
+                onClick={() => navigate("/bookings")}
               >Manage</Button>
             </Text>
           </Stack>
@@ -82,7 +85,8 @@ export function DashboardPage() {
                 bg="teal.500"
                 color="white"
                 _active={{ bg: "teal.600" }}
-              >Book</Button>
+                onClick={() => navigate("/rooms")}
+              >View Rooms</Button>
             </Text>
           </Stack>
         </Box>

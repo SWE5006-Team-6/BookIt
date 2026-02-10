@@ -1,9 +1,10 @@
 import { Box, Button, Container, Heading, Text } from '@chakra-ui/react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.tsx';
 
 export function AppLayout() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <Box minH="100vh" bg="gray.50">
@@ -20,7 +21,15 @@ export function AppLayout() {
         <Container maxW="5xl">
           <Box display="flex" justifyContent="space-between" alignItems="center">
             {/* Logo */}
-            <Box display="flex" alignItems="center" gap={{ base: '2', md: '3' }}>
+            <Button 
+              variant="ghost"
+              _active={{ bg: "transparent" }}
+              _hover={{ bg: "transparent" }}
+              display="flex" 
+              alignItems="center" 
+              gap={{ base: '2', md: '3' }}
+              onClick={() => navigate("/")}
+            >
               <Box
                 w={{ base: '8', md: '9' }}
                 h={{ base: '8', md: '9' }}
@@ -45,7 +54,7 @@ export function AppLayout() {
               >
                 BookIt
               </Heading>
-            </Box>
+            </Button>
 
             {/* User info + sign out */}
             <Box display="flex" alignItems="center" gap={{ base: '2', md: '4' }}>
