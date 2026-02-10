@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { apiRequest } from '../lib/api.ts';
+import { apiRequest } from '../lib/api';
 
 interface User {
   id: string;
@@ -43,18 +43,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Fetch user profile on mount if token exists
   useEffect(() => {
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
+    const fetchProfile = async () => {
+      const storedToken = localStorage.getItem('accessToken');
+      
+      if (!storedToken) {
+        setIsLoading(false);
+        return;
+      }
 
-    apiRequest<User>('/auth/me', { token })
-      .then(setUser)
-      .catch(() => {
+      try {
+        const profile = await apiRequest<User>('/auth/me', { token: storedToken });
+        setUser(profile);
+        setToken(storedToken);
+      } catch (error) {
+        console.error('Failed to fetch profile:', error);
         logout();
-      })
-      .finally(() => setIsLoading(false));
-  }, [token, logout]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [logout]);
 
   const login = async (email: string, password: string) => {
     const tokens = await apiRequest<AuthTokens>('/auth/login', {

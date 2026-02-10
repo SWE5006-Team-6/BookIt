@@ -6,13 +6,19 @@ import type { User } from '@prisma/client';
  * Must be used with SupabaseAuthGuard.
  *
  * Usage:
- *   @UseGuards(SupabaseAuthGuard)
  *   @Get('me')
  *   getMe(@CurrentUser() user: User) { ... }
+ *
+ *   @Post()
+ *   create(@CurrentUser('id') userId: string) { ... }
  */
 export const CurrentUser = createParamDecorator(
-  (_data: unknown, ctx: ExecutionContext): User => {
+  (data: keyof User | undefined, ctx: ExecutionContext): User | string => {
     const request = ctx.switchToHttp().getRequest();
-    return request.user;
+    const user = request.user as User;
+    if (data && user) {
+      return user[data] as string;
+    }
+    return user;
   },
 );

@@ -4,6 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../../helpers/render.tsx';
 import { DashboardPage } from '../../../src/pages/DashboardPage.tsx';
 
+vi.mock('../../../src/lib/api', () => ({
+  apiRequest: vi.fn().mockResolvedValue([]),
+}));
+
 // Mock useAuth
 const mockUseAuth = vi.fn();
 vi.mock('../../../src/contexts/AuthContext.tsx', () => ({
@@ -24,6 +28,7 @@ vi.mock('react-router', async () => {
 
 describe('DashboardPage', () => {
   const mockUser = {
+    id: 'user-1',
     displayName: 'John Doe',
     email: 'john@ncs.com.sg',
     role: 'Employee',
@@ -33,6 +38,7 @@ describe('DashboardPage', () => {
     vi.clearAllMocks();
     mockUseAuth.mockReturnValue({
       user: mockUser,
+      token: 'fake-token',
     });
   });
 
@@ -46,20 +52,21 @@ describe('DashboardPage', () => {
   it('should fallback to email if displayName is missing', () => {
     mockUseAuth.mockReturnValue({
       user: { ...mockUser, displayName: null },
+      token: 'fake-token',
     });
-    
+
     renderWithProviders(<DashboardPage />);
     expect(screen.getByText(`Welcome, ${mockUser.email}`)).toBeInTheDocument();
   });
 
-  it('should navigate to / when Manage button is clicked', async () => {
+  it('should navigate to /bookings when Manage button is clicked', async () => {
     const user = userEvent.setup();
     renderWithProviders(<DashboardPage />);
 
     const manageBtn = screen.getByRole('button', { name: /manage/i });
     await user.click(manageBtn);
 
-    expect(mockNavigate).toHaveBeenCalledWith('/');
+    expect(mockNavigate).toHaveBeenCalledWith('/bookings');
   });
 
   it('should navigate to /rooms when View Rooms button is clicked', async () => {

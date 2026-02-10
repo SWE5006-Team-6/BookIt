@@ -1,10 +1,9 @@
-import { Box, Button, Container, Heading, Text } from '@chakra-ui/react';
-import { Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext.tsx';
+import { Box, Button, Container, Heading, HStack, Link as ChakraLink, Text } from '@chakra-ui/react';
+import { Outlet, Link as RouterLink } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 export function AppLayout() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
 
   return (
     <Box minH="100vh" bg="gray.50">
@@ -21,40 +20,58 @@ export function AppLayout() {
         <Container maxW="5xl">
           <Box display="flex" justifyContent="space-between" alignItems="center">
             {/* Logo */}
-            <Button 
-              variant="ghost"
-              _active={{ bg: "transparent" }}
-              _hover={{ bg: "transparent" }}
-              display="flex" 
-              alignItems="center" 
-              gap={{ base: '2', md: '3' }}
-              onClick={() => navigate("/")}
-            >
-              <Box
-                w={{ base: '8', md: '9' }}
-                h={{ base: '8', md: '9' }}
-                bg="white"
-                borderRadius="lg"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-              >
-                <Text
-                  fontSize={{ base: 'md', md: 'lg' }}
-                  fontWeight="bold"
-                  color="#4F46E5"
-                >
-                  B
-                </Text>
-              </Box>
-              <Heading
-                size={{ base: 'md', md: 'lg' }}
+            <HStack gap={{ base: '2', md: '4' }}>
+              <ChakraLink asChild display="flex" alignItems="center" gap={{ base: '2', md: '3' }}>
+                <RouterLink to="/">
+                  <Box
+                    w={{ base: '8', md: '9' }}
+                    h={{ base: '8', md: '9' }}
+                    bg="white"
+                    borderRadius="lg"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <Text
+                      fontSize={{ base: 'md', md: 'lg' }}
+                      fontWeight="bold"
+                      color="#4F46E5"
+                    >
+                      B
+                    </Text>
+                  </Box>
+                  <Heading
+                    size={{ base: 'md', md: 'lg' }}
+                    color="white"
+                    fontWeight="bold"
+                  >
+                    BookIt
+                  </Heading>
+                </RouterLink>
+              </ChakraLink>
+            </HStack>
+
+            {/* Navigation links */}
+            <HStack gap={{ base: '2', md: '4' }} display={{ base: 'none', md: 'flex' }}>
+              <ChakraLink
+                asChild
                 color="white"
-                fontWeight="bold"
+                opacity="0.85"
+                _hover={{ opacity: '1' }}
+                fontSize="sm"
               >
-                BookIt
-              </Heading>
-            </Button>
+                <RouterLink to="/">Dashboard</RouterLink>
+              </ChakraLink>
+              <ChakraLink
+                asChild
+                color="white"
+                opacity="0.85"
+                _hover={{ opacity: '1' }}
+                fontSize="sm"
+              >
+                <RouterLink to="/rooms">Rooms</RouterLink>
+              </ChakraLink>
+            </HStack>
 
             {/* User info + sign out */}
             <Box display="flex" alignItems="center" gap={{ base: '2', md: '4' }}>
