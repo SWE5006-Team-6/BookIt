@@ -22,10 +22,9 @@ import {
 	FiCheckCircle,
 	FiAlertCircle
 } from 'react-icons/fi';
-import type Booking from '../types/Booking';
 
 // Mock data based on your Booking + Room Schema
-const MOCK_BOOKINGS : Booking[] = [
+const MOCK_BOOKINGS : any[] = [
 	{
 		id: 'b1',
 		title: 'Product Sprint Planning',
@@ -44,7 +43,7 @@ const MOCK_BOOKINGS : Booking[] = [
 	}
 ];
 
-const BookingRow = ({ booking } : { booking: Booking }) => {
+const BookingRow = ({ booking } : { booking: any }) => {
 	const isPast = new Date(booking.startAt) < new Date();
 
 	return (
