@@ -96,6 +96,7 @@ export function DashboardPage() {
           color="white"
           _active={{ bg: "teal.600" }}
           gridColumn={{ base: '1', md: '1 / -1' }}
+          onClick={() => navigate("/quick-book")}
         >
           <PiLightningFill /> Quick Book
         </Button>
