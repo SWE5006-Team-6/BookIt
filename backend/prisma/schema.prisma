@@ -6,48 +6,30 @@ datasource db {
   provider = "postgresql"
 }
 
-// ─── Enums ───────────────────────────────────────────────────────────────────
-
-enum UserRole {
-  USER
-  ADMIN
-}
-
-enum BookingStatus {
-  CONFIRMED
-  CANCELLED
-  RELEASED_NO_SHOW
-}
-
-// ─── Models ──────────────────────────────────────────────────────────────────
-
 model User {
-  id          String   @id @default(uuid())
-  email       String   @unique
+  id          String    @id @default(uuid())
+  email       String    @unique
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   displayName String?
-  role        UserRole @default(USER)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  createdRooms Room[]
-  bookings     Booking[]
+  isActive    Boolean   @default(true)
+  role        UserRole  @default(USER)
+  bookings    Booking[]
 }
 
 model Room {
-  id          String   @id @default(uuid())
-  name        String   @unique
+  id          String    @id @default(uuid())
+  name        String    @unique
   capacity    Int
   location    String?
-  isActive    Boolean  @default(true)
-  createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  createdBy User      @relation(fields: [createdById], references: [id])
-  bookings  Booking[]
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String
+  isAvailable Boolean   @default(true)
+  reason      String?
+  updatedBy   String
+  bookings    Booking[]
 }
 
 model Booking {
@@ -65,11 +47,19 @@ model Booking {
   releaseReason String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  bookedBy      User          @relation(fields: [bookedById], references: [id])
+  room          Room          @relation(fields: [roomId], references: [id])
 
-  // Relations
-  room     Room @relation(fields: [roomId], references: [id])
-  bookedBy User @relation(fields: [bookedById], references: [id])
-
-  // Composite index for efficient room-availability overlap queries
   @@index([roomId, startAt, endAt])
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+  RELEASED_NO_SHOW
 }
