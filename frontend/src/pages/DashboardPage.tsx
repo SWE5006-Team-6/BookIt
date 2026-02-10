@@ -1,5 +1,6 @@
 import {
   Box,
+  Button,
   Heading,
   Stack,
   Text,
@@ -76,6 +77,15 @@ export function DashboardPage() {
             </Text>
           </Stack>
         </Box>
+
+        <Button 
+          bg="teal.500"
+          color="white"
+          _active={{ bg: "teal.600" }}
+          gridColumn={{ base: '1', md: '1 / -1' }}
+        >
+          Quick Book
+        </Button>
       </Box>
     </Stack>
   );
