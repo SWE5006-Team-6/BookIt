@@ -33,7 +33,7 @@ const RoomCard = ({ room }) => {
 			overflow="hidden"
 			borderWidth="1px"
 			transition="all 0.3s ease"
-			_hover={{ shadow: 'xl', borderColor: 'blue.500', transform: 'scale(1.02)' }}
+			_hover={{ shadow: 'xl', borderColor: '#4f46e5', transform: 'scale(1.02)' }}
 		>
 			{/* Decorative Room Header */}
 			<Box h="120px" bg="#4f46e5" p="6" position="relative">
@@ -125,7 +125,7 @@ export default function RoomsPage() {
 					<Separator orientation={{ base: 'horizontal', lg: 'vertical' }} h={{ base: '1px', lg: '40px' }} />
 
 					<HStack flex="1" width="full">
-						<Icon as={FiClock} color="blue.500" />
+						<Icon as={FiClock} color="#4f46e5" />
 						<Input type="datetime-local unstyled" size="sm" />
 					</HStack>
 
