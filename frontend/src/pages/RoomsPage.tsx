@@ -234,9 +234,9 @@ export default function RoomsPage() {
           color="#4F46E5"
           borderColor="#4F46E5"
           _hover={{ bg: '#4F46E5', color: 'white' }}
-          leftIcon={<Icon as={FiChevronUp} />}
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         >
+          <Icon as={FiChevronUp} mr="2" />
           Return to top
         </Button>
       </Flex>
