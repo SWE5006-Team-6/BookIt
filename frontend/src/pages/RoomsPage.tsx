@@ -24,7 +24,7 @@ import {
   Separator,
   Spinner,
 } from '@chakra-ui/react';
-import { FiSearch, FiUsers, FiMapPin, FiClock, FiCheckCircle, FiInfo } from 'react-icons/fi';
+import { FiSearch, FiUsers, FiMapPin, FiClock, FiCheckCircle, FiInfo, FiChevronUp } from 'react-icons/fi';
 import type Room from '../types/Room';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -75,6 +75,7 @@ const initialAddForm = { name: '', capacity: '', location: '' };
 
 export default function RoomsPage() {
   const [search, setSearch] = useState('');
+  const [minCapacity, setMinCapacity] = useState<string>('');
   const [rooms, setRooms] = useState<Room[]>([]);
   const { token } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
@@ -136,6 +137,13 @@ export default function RoomsPage() {
     }
   };
 
+  const filteredRooms = rooms.filter(r => {
+    const matchesSearch = r.name.toLowerCase().includes(search.toLowerCase());
+    const cap = minCapacity.trim() === '' ? null : parseInt(minCapacity, 10);
+    const matchesCapacity = cap == null || (!Number.isNaN(cap) && r.capacity >= cap);
+    return matchesSearch && matchesCapacity;
+  });
+
   if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minH="40vh">
@@ -183,6 +191,18 @@ export default function RoomsPage() {
             _focus={{ boxShadow: 'none' }}
           />
         </HStack>
+        <HStack flex="1" width="full" minW="120px" borderWidth="1px" borderColor="gray.200" borderRadius="lg" px="4" py="2">
+          <Icon as={FiUsers} color="#4F46E5" boxSize="4" />
+          <Input
+            type="number"
+            min={1}
+            placeholder="Min capacity"
+            value={minCapacity}
+            onChange={(e) => setMinCapacity(e.target.value)}
+            border="none"
+            _focus={{ boxShadow: 'none' }}
+          />
+        </HStack>
         <HStack flex="1" width="full">
           <Icon as={FiClock} color="#4F46E5" />
           <Input type="datetime-local" size="sm" borderColor="gray.200" />
@@ -193,20 +213,33 @@ export default function RoomsPage() {
       <Flex justify="space-between" align="center" mb="6">
         <HStack>
           <Icon as={FiCheckCircle} color="green.500" />
-          <Text fontWeight="bold">{rooms.length} Rooms Found</Text>
+          <Text fontWeight="bold">{filteredRooms.length} Rooms Found</Text>
         </HStack>
         <Button variant="ghost" size="sm"><FiInfo /> Booking Policies</Button>
       </Flex>
 
-      {rooms.length === 0 ? (
+      {filteredRooms.length === 0 ? (
         <Text color="gray.500" py="8">No rooms found.</Text>
       ) : (
         <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap="6" pb="8">
-          {rooms.filter(r => r.name.toLowerCase().includes(search.toLowerCase())).map((room) => (
+          {filteredRooms.map((room) => (
             <RoomCard key={room.id} room={room} />
           ))}
         </SimpleGrid>
       )}
+
+      <Flex justify="center" py="8">
+        <Button
+          variant="outline"
+          color="#4F46E5"
+          borderColor="#4F46E5"
+          _hover={{ bg: '#4F46E5', color: 'white' }}
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        >
+          <Icon as={FiChevronUp} mr="2" />
+          Return to top
+        </Button>
+      </Flex>
 
       <Dialog.Root open={isAddModalOpen} onOpenChange={(e) => setIsAddModalOpen(e.open)}>
         <DialogBackdrop bg="blackAlpha.600" backdropFilter="blur(4px)" zIndex={1400} />

@@ -5,11 +5,19 @@ import {
   Button,
   Card,
   Container,
+  Dialog,
+  DialogBackdrop,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogPositioner,
+  DialogTitle,
   Heading,
   Spinner,
   Stack,
   Table,
   Text,
+  useDisclosure,
 } from '@chakra-ui/react';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,6 +36,8 @@ export function MyBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const { open: isCancelDialogOpen, onOpen, onClose } = useDisclosure();
 
   useEffect(() => {
     if (user?.id && token) {
@@ -61,6 +71,18 @@ export function MyBookingsPage() {
     } finally {
       setCancellingId(null);
     }
+  };
+
+  const openCancelDialog = (bookingId: string) => {
+    setSelectedBookingId(bookingId);
+    onOpen();
+  };
+
+  const confirmCancel = async () => {
+    if (!selectedBookingId) return;
+    await handleCancel(selectedBookingId);
+    onClose();
+    setSelectedBookingId(null);
   };
 
   if (!user) {
@@ -146,7 +168,7 @@ export function MyBookingsPage() {
                             color="red.600"
                             borderColor="red.300"
                             _hover={{ bg: 'red.50' }}
-                            onClick={() => handleCancel(booking.id)}
+                            onClick={() => openCancelDialog(booking.id)}
                             loading={cancellingId === booking.id}
                           >
                             Cancel booking
@@ -160,6 +182,28 @@ export function MyBookingsPage() {
             </Table.ScrollArea>
           </Card.Root>
         )}
+        {/* Cancel confirmation dialog */}
+        <Dialog.Root open={isCancelDialogOpen} onOpenChange={(e) => !e.open && onClose()}>
+          <DialogBackdrop bg="blackAlpha.600" backdropFilter="blur(4px)" zIndex={1400} />
+          <DialogPositioner display="flex" alignItems="center" justifyContent="center" p="4" zIndex={1401}>
+            <DialogContent maxW="400px" bg="white" borderRadius="2xl" boxShadow="2xl" borderWidth="1px" borderColor="gray.200" p="0" overflow="hidden">
+              <DialogTitle fontSize="lg" fontWeight="bold" p="4" pb="0">
+                Cancel booking
+              </DialogTitle>
+              <DialogBody p="4">
+                Are you sure you want to cancel this booking? This action cannot be undone.
+              </DialogBody>
+              <DialogFooter gap="3" p="4" pt="2" borderTopWidth="1px" borderColor="gray.100">
+                <Button variant="outline" onClick={onClose}>
+                  No, keep booking
+                </Button>
+                <Button colorPalette="red" onClick={confirmCancel} loading={cancellingId !== null}>
+                  Yes, cancel booking
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </DialogPositioner>
+        </Dialog.Root>
       </Stack>
     </Container>
   );
