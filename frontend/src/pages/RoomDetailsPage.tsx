@@ -40,6 +40,7 @@ export function RoomDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
   const [message, setMessage] = useState<Message>(null);
 
   const [formData, setFormData] = useState({
@@ -87,8 +88,9 @@ export function RoomDetailsPage() {
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
+    setBookingError(null);
     if (!token) {
-      setMessage({ type: 'error', title: 'Error', description: 'You must be signed in to book a room.' });
+      setBookingError('You must be signed in to book a room.');
       return;
     }
     setIsBooking(true);
@@ -101,10 +103,11 @@ export function RoomDetailsPage() {
       setMessage({ type: 'success', title: 'Success', description: 'Room booked successfully' });
       setIsModalOpen(false);
       setFormData({ title: '', startAt: '', endAt: '' });
+      setBookingError(null);
       loadBookings();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Booking failed';
-      setMessage({ type: 'error', title: 'Error', description: errorMessage });
+      setBookingError(errorMessage);
     } finally {
       setIsBooking(false);
     }
@@ -161,7 +164,7 @@ export function RoomDetailsPage() {
                 <Heading size="xl">{room.name}</Heading>
                 <Text color="gray.600">Created by {room.createdBy || '—'}</Text>
               </VStack>
-              <Button bg="#4F46E5" color="white" _hover={{ bg: '#4338CA' }} size="lg" onClick={() => setIsModalOpen(true)}>
+              <Button bg="#4F46E5" color="white" _hover={{ bg: '#4338CA' }} size="lg" onClick={() => { setBookingError(null); setIsModalOpen(true); }}>
                 Book This Room
               </Button>
             </HStack>
@@ -236,7 +239,7 @@ export function RoomDetailsPage() {
         </Stack>
       </Stack>
 
-      <Dialog.Root open={isModalOpen} onOpenChange={(e) => setIsModalOpen(e.open)}>
+      <Dialog.Root open={isModalOpen} onOpenChange={(e) => { setIsModalOpen(e.open); if (!e.open) setBookingError(null); }}>
         <DialogBackdrop bg="blackAlpha.600" backdropFilter="blur(4px)" zIndex={1400} />
         <DialogPositioner display="flex" alignItems="flex-start" justifyContent="center" pt="12vh" pb="2rem" px="4" zIndex={1401}>
           <DialogContent maxW="420px" width="100%" maxH="90vh" bg="white" borderRadius="2xl" boxShadow="2xl" borderWidth="1px" borderColor="gray.200" p="0" overflow="hidden" display="flex" flexDirection="column">
@@ -249,6 +252,11 @@ export function RoomDetailsPage() {
             <form onSubmit={handleBook} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               <DialogBody p="6" overflowY="auto" flex="1">
                 <Stack gap="5">
+                  {bookingError && (
+                    <Box p="3" borderRadius="md" bg="red.50" color="red.700" fontSize="sm" borderWidth="1px" borderColor="red.200">
+                      {bookingError}
+                    </Box>
+                  )}
                   <Box bg="gray.50" borderRadius="lg" px="4" py="3">
                     <Text fontSize="sm" color="gray.600">You are booking</Text>
                     <Text fontWeight="semibold" color="gray.800" mt="0.5">{room.name}</Text>
