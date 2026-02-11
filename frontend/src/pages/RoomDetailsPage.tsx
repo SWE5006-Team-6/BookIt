@@ -49,6 +49,23 @@ export function RoomDetailsPage() {
     endAt: '',
   });
 
+  const getMinDateTime = () => {
+    const now = new Date();
+    const pad = (value: number) => value.toString().padStart(2, '0');
+    const year = now.getFullYear();
+    const month = pad(now.getMonth() + 1);
+    const day = pad(now.getDate());
+    const hours = pad(now.getHours());
+    const minutes = pad(now.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const getEndMinDateTime = () => {
+    const nowMin = getMinDateTime();
+    if (!formData.startAt) return nowMin;
+    return new Date(formData.startAt) > new Date(nowMin) ? formData.startAt : nowMin;
+  };
+
   useEffect(() => {
     if (!message) return;
     const t = setTimeout(() => setMessage(null), 5000);
@@ -92,6 +109,22 @@ export function RoomDetailsPage() {
     if (!token) {
       setBookingError('You must be signed in to book a room.');
       return;
+    }
+    if (formData.startAt && formData.endAt) {
+      const start = new Date(formData.startAt);
+      const end = new Date(formData.endAt);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        setBookingError('Please provide valid start and end times.');
+        return;
+      }
+      if (end <= start) {
+        setBookingError('End time must be later than start time.');
+        return;
+      }
+      if (end <= new Date()) {
+        setBookingError('End time must be later than the current time.');
+        return;
+      }
     }
     setIsBooking(true);
     try {
@@ -276,7 +309,19 @@ export function RoomDetailsPage() {
                     <Input
                       type="datetime-local"
                       value={formData.startAt}
-                      onChange={(e) => setFormData({ ...formData, startAt: e.target.value })}
+                      onChange={(e) => {
+                        const nextStart = e.target.value;
+                        setFormData((prev) => {
+                          const shouldClearEnd =
+                            prev.endAt && new Date(prev.endAt) <= new Date(nextStart);
+                          return {
+                            ...prev,
+                            startAt: nextStart,
+                            endAt: shouldClearEnd ? '' : prev.endAt,
+                          };
+                        });
+                      }}
+                      min={getMinDateTime()}
                       required
                       borderColor="gray.200"
                     />
@@ -287,6 +332,7 @@ export function RoomDetailsPage() {
                       type="datetime-local"
                       value={formData.endAt}
                       onChange={(e) => setFormData({ ...formData, endAt: e.target.value })}
+                      min={getEndMinDateTime()}
                       required
                       borderColor="gray.200"
                     />
