@@ -84,6 +84,17 @@ export default function RoomsPage() {
   const [addError, setAddError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const getMinDateTime = () => {
+    const now = new Date();
+    const pad = (value: number) => value.toString().padStart(2, '0');
+    const year = now.getFullYear();
+    const month = pad(now.getMonth() + 1);
+    const day = pad(now.getDate());
+    const hours = pad(now.getHours());
+    const minutes = pad(now.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   useEffect(() => {
     loadRooms();
   }, []);
@@ -205,7 +216,7 @@ export default function RoomsPage() {
         </HStack>
         <HStack flex="1" width="full">
           <Icon as={FiClock} color="#4F46E5" />
-          <Input type="datetime-local" size="sm" borderColor="gray.200" />
+          <Input type="datetime-local" size="sm" borderColor="gray.200" min={getMinDateTime()} />
         </HStack>
         <Button bg="#4F46E5" color="white" _hover={{ bg: '#4338CA' }} px="8">Find Available</Button>
       </Stack>
