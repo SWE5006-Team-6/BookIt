@@ -24,7 +24,7 @@ import {
   Separator,
   Spinner,
 } from '@chakra-ui/react';
-import { FiSearch, FiUsers, FiMapPin, FiClock, FiCheckCircle, FiInfo } from 'react-icons/fi';
+import { FiSearch, FiUsers, FiMapPin, FiClock, FiCheckCircle, FiInfo, FiChevronUp } from 'react-icons/fi';
 import type Room from '../types/Room';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -227,6 +227,19 @@ export default function RoomsPage() {
           ))}
         </SimpleGrid>
       )}
+
+      <Flex justify="center" py="8">
+        <Button
+          variant="outline"
+          color="#4F46E5"
+          borderColor="#4F46E5"
+          _hover={{ bg: '#4F46E5', color: 'white' }}
+          leftIcon={<Icon as={FiChevronUp} />}
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        >
+          Return to top
+        </Button>
+      </Flex>
 
       <Dialog.Root open={isAddModalOpen} onOpenChange={(e) => setIsAddModalOpen(e.open)}>
         <DialogBackdrop bg="blackAlpha.600" backdropFilter="blur(4px)" zIndex={1400} />
