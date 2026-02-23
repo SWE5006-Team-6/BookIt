@@ -82,7 +82,7 @@ export function RoomDetailsPage() {
   const loadRoomDetails = async () => {
     if (!id) return;
     try {
-      const data = await apiRequest<Room>(`/rooms/${id}`);
+      const data = await apiRequest<Room>(`/rooms/${id}`, { token: token ?? undefined });
       setRoom(data);
     } catch (error) {
       console.error('Failed to load room:', error);
@@ -95,7 +95,7 @@ export function RoomDetailsPage() {
   const loadBookings = async () => {
     if (!id) return;
     try {
-      const data = await apiRequest<Booking[]>(`/bookings/room/${id}`);
+      const data = await apiRequest<Booking[]>(`/bookings/room/${id}`, { token: token ?? undefined });
       setBookings(data);
     } catch (error) {
       console.error('Failed to load bookings:', error);
