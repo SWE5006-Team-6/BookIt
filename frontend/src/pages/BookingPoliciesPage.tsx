@@ -8,7 +8,6 @@ import {
   Spinner,
   Stack,
   Switch,
-  Table,
   Text,
   VStack,
 } from '@chakra-ui/react';
