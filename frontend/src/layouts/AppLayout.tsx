@@ -62,15 +62,38 @@ export function AppLayout() {
               >
                 <RouterLink to="/">Dashboard</RouterLink>
               </ChakraLink>
-              <ChakraLink
-                asChild
-                color="white"
-                opacity="0.85"
-                _hover={{ opacity: '1' }}
-                fontSize="sm"
-              >
-                <RouterLink to="/rooms">Rooms</RouterLink>
-              </ChakraLink>
+              {user?.role === 'ADMIN' ? (
+                <>
+                  <ChakraLink
+                    asChild
+                    color="white"
+                    opacity="0.85"
+                    _hover={{ opacity: '1' }}
+                    fontSize="sm"
+                  >
+                    <RouterLink to="/admin/rooms">Room Management</RouterLink>
+                  </ChakraLink>
+                  <ChakraLink
+                    asChild
+                    color="white"
+                    opacity="0.85"
+                    _hover={{ opacity: '1' }}
+                    fontSize="sm"
+                  >
+                    <RouterLink to="/admin/policies">Booking Policies</RouterLink>
+                  </ChakraLink>
+                </>
+              ) : (
+                <ChakraLink
+                  asChild
+                  color="white"
+                  opacity="0.85"
+                  _hover={{ opacity: '1' }}
+                  fontSize="sm"
+                >
+                  <RouterLink to="/rooms">Rooms</RouterLink>
+                </ChakraLink>
+              )}
             </HStack>
 
             {/* User info + sign out */}
@@ -101,7 +124,11 @@ export function AppLayout() {
       </Box>
 
       {/* Main content */}
-      <Container maxW="5xl" px={{ base: '4', md: '6' }} py={{ base: '6', md: '10' }}>
+      <Container
+        maxW={user?.role === 'ADMIN' ? '7xl' : '5xl'}
+        px={{ base: '4', md: '6' }}
+        py={{ base: '6', md: '10' }}
+      >
         <Outlet />
       </Container>
     </Box>

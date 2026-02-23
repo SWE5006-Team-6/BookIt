@@ -8,10 +8,17 @@ import { BookingRepository } from './booking.repository';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { BookingStatus } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { RoomStateFactory } from '../rooms/state/room-state.factory';
+import { BookingPolicyChainService } from '../booking-policy/handlers/booking-policy-chain.service';
 
 @Injectable()
 export class BookingService {
-  constructor(private readonly bookingRepository: BookingRepository) {}
+  constructor(
+    private readonly bookingRepository: BookingRepository,
+    private readonly prisma: PrismaService,
+    private readonly policyChain: BookingPolicyChainService,
+  ) {}
 
   async findAll() {
     return this.bookingRepository.findAll();
@@ -44,6 +51,22 @@ export class BookingService {
     if (startAt < new Date()) {
       throw new BadRequestException('Cannot book in the past');
     }
+
+    const room = await this.prisma.room.findUnique({
+      where: { id: dto.roomId },
+    });
+    if (!room) {
+      throw new NotFoundException('Room not found');
+    }
+
+    const roomState = RoomStateFactory.fromRoom(room);
+    if (!roomState.canBook()) {
+      throw new BadRequestException(
+        `Room is currently ${roomState.getStatus().toLowerCase()} and cannot be booked`,
+      );
+    }
+
+    await this.policyChain.validate({ startAt, endAt, userId: bookedById });
 
     const isAvailable = await this.bookingRepository.checkAvailability(
       dto.roomId,
