@@ -11,16 +11,18 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import { apiRequest } from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 import type Room from '../types/Room';
 
 export default function QuickBookPage() {
+  const { token } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadRooms = async () => {
       try {
-        const data = await apiRequest<Room[]>(`/rooms`);
+        const data = await apiRequest<Room[]>(`/rooms`, { token: token ?? undefined });
         setRooms(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Failed to load rooms:', error);
