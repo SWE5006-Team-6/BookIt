@@ -80,9 +80,15 @@ export class RoomsRepository {
     });
   }
 
+  findByName(name: string) {
+    return this.prisma.room.findUnique({
+      where: { name },
+    });
+  }
+
   findAllRooms() {
     return this.prisma.room.findMany({
-      orderBy: [{ createdAt: 'desc' }],
+      orderBy: [{ name: 'asc' }],
     });
   }
 

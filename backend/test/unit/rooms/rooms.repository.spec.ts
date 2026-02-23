@@ -154,27 +154,27 @@ describe('RoomsRepository', () => {
     });
   });
 
-  it('should return rooms ordered by createdAt desc', async () => {
-    prisma._rooms.push({
-      id: 'room-1',
-      name: 'Room A',
-      capacity: 2,
-      isActive: true,
-      isAvailable: true,
-      createdAt: new Date('2026-01-01T10:00:00'),
-    });
+  it('should return rooms ordered by name asc', async () => {
     prisma._rooms.push({
       id: 'room-2',
-      name: 'Room B',
+      name: 'Bravo Room',
       capacity: 3,
       isActive: true,
       isAvailable: true,
       createdAt: new Date('2026-02-01T10:00:00'),
     });
+    prisma._rooms.push({
+      id: 'room-1',
+      name: 'Alpha Room',
+      capacity: 2,
+      isActive: true,
+      isAvailable: true,
+      createdAt: new Date('2026-01-01T10:00:00'),
+    });
 
     const result = await repo.findAllRooms();
 
-    expect(result.map((r) => r.id)).toEqual(['room-2', 'room-1']);
+    expect(result.map((r) => r.id)).toEqual(['room-1', 'room-2']);
   });
 
   it('should filter available rooms by capacity and bookings', async () => {

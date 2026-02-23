@@ -58,6 +58,18 @@ enum UserRole {
   ADMIN
 }
 
+model BookingPolicy {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  label       String
+  description String?
+  isActive    Boolean  @default(true)
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
 enum BookingStatus {
   CONFIRMED
   CANCELLED
