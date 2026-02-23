@@ -5,10 +5,13 @@ import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { RoomDetailsPage } from './pages/RoomDetailsPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { AdminRoute } from './components/AdminRoute';
 import { AppLayout } from './layouts/AppLayout';
 import { useAuth } from './contexts/AuthContext';
 import QuickBookPage from './pages/QuickBookPage';
 import RoomsPage from './pages/RoomsPage';
+import RoomManagementPage from './pages/RoomManagementPage';
+import BookingPoliciesPage from './pages/BookingPoliciesPage';
 import { MyBookingsPage } from './pages/MyBookingsPage';
 
 function App() {
@@ -47,6 +50,22 @@ function App() {
         <Route path="/rooms/:id" element={<RoomDetailsPage />} />
         <Route path="/quick-book" element={<QuickBookPage />} />
         <Route path="/bookings" element={<MyBookingsPage />} />
+        <Route
+          path="/admin/rooms"
+          element={
+            <AdminRoute>
+              <RoomManagementPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/policies"
+          element={
+            <AdminRoute>
+              <BookingPoliciesPage />
+            </AdminRoute>
+          }
+        />
       </Route>
     </Routes>
   );

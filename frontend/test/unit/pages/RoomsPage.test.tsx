@@ -18,13 +18,13 @@ vi.mock('../../../src/contexts/AuthContext', () => ({
 
 describe('RoomsPage', () => {
   const mockRooms = [
-    { id: '1', name: 'Conference Room A', capacity: 10, location: 'Level 2' },
-    { id: '2', name: 'Quiet Pod', capacity: 1, location: 'Level 3' },
+    { id: '1', name: 'Conference Room A', capacity: 10, location: 'Level 2', isActive: true, isAvailable: true, reason: null },
+    { id: '2', name: 'Quiet Pod', capacity: 1, location: 'Level 3', isActive: true, isAvailable: true, reason: null },
   ];
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseAuth.mockReturnValue({ token: 'fake-token' });
+    mockUseAuth.mockReturnValue({ token: 'fake-token', user: { role: 'USER' } });
     // Default the API to return our mock rooms
     (apiRequest as any).mockResolvedValue(mockRooms);
   });
@@ -83,7 +83,7 @@ describe('RoomsPage', () => {
   });
 
   it('should fetch rooms even when there is no auth token (public list)', async () => {
-    mockUseAuth.mockReturnValue({ token: null });
+    mockUseAuth.mockReturnValue({ token: null, user: null });
     (apiRequest as any).mockResolvedValue(mockRooms);
 
     renderWithProviders(<RoomsPage />);

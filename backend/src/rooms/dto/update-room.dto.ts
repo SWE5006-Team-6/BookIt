@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpdateRoomDto {
   @IsString()
@@ -13,12 +13,4 @@ export class UpdateRoomDto {
   @IsString()
   @IsOptional()
   location?: string;
-
-  @IsBoolean()
-  @IsOptional()
-  isActive?: boolean;
-
-  @IsBoolean()
-  @IsOptional()
-  isAvailable?: boolean;
 }
