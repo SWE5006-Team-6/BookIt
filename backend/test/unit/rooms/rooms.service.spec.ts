@@ -2,10 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { RoomsService } from '../../../src/rooms/rooms.service';
 import { RoomsRepository } from '../../../src/rooms/rooms.repository';
+import { RoomValidatorService } from '../../../src/rooms/validation/room-validator.service';
 
 describe('RoomsService', () => {
   let service: RoomsService;
   let roomsRepo: RoomsRepository;
+  let roomValidator: RoomValidatorService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -17,8 +19,16 @@ describe('RoomsService', () => {
             createRoom: jest.fn(),
             searchAvailableRooms: jest.fn(),
             findById: jest.fn(),
+            findByName: jest.fn(),
             updateRoom: jest.fn(),
             findAllRooms: jest.fn(),
+          },
+        },
+        {
+          provide: RoomValidatorService,
+          useValue: {
+            validateCreate: jest.fn().mockResolvedValue(undefined),
+            validateUpdate: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
@@ -26,6 +36,7 @@ describe('RoomsService', () => {
 
     service = module.get<RoomsService>(RoomsService);
     roomsRepo = module.get<RoomsRepository>(RoomsRepository);
+    roomValidator = module.get<RoomValidatorService>(RoomValidatorService);
   });
 
   afterEach(() => {
@@ -33,12 +44,16 @@ describe('RoomsService', () => {
   });
 
   describe('createRoom', () => {
-    it('should apply defaults and set audit fields', async () => {
+    it('should validate and create room with defaults', async () => {
       const dto = { name: 'Room A', capacity: 5 };
       (roomsRepo.createRoom as jest.Mock).mockResolvedValue({ id: 'room-1' });
 
       await service.createRoom(dto as any, 'user-1');
 
+      expect(roomValidator.validateCreate).toHaveBeenCalledWith({
+        name: 'Room A',
+        capacity: 5,
+      });
       expect(roomsRepo.createRoom).toHaveBeenCalledWith({
         name: 'Room A',
         capacity: 5,
@@ -71,6 +86,18 @@ describe('RoomsService', () => {
         createdBy: 'user-2',
         updatedBy: 'user-2',
       });
+    });
+
+    it('should not create room if validation fails', async () => {
+      (roomValidator.validateCreate as jest.Mock).mockRejectedValue(
+        new BadRequestException(['Name already exists']),
+      );
+
+      await expect(
+        service.createRoom({ name: 'Dup', capacity: 5 } as any, 'user-1'),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(roomsRepo.createRoom).not.toHaveBeenCalled();
     });
   });
 
@@ -119,18 +146,16 @@ describe('RoomsService', () => {
       expect(roomsRepo.updateRoom).not.toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException when capacity < 1', async () => {
+    it('should throw BadRequestException when room is deactivated', async () => {
       (roomsRepo.findById as jest.Mock).mockResolvedValue({
         id: 'room-1',
         name: 'Room A',
-        location: 'Floor 1',
-        capacity: 3,
-        isActive: true,
-        isAvailable: true,
+        isActive: false,
+        isAvailable: false,
       });
 
       await expect(
-        service.updateRoom('room-1', { capacity: 0 } as any, 'user-1'),
+        service.updateRoom('room-1', { name: 'X' } as any, 'user-1'),
       ).rejects.toThrow(BadRequestException);
 
       expect(roomsRepo.updateRoom).not.toHaveBeenCalled();
@@ -157,8 +182,6 @@ describe('RoomsService', () => {
         name: 'Room A',
         capacity: 3,
         location: 'Floor 1',
-        isActive: true,
-        isAvailable: true,
         updatedBy: 'user-1',
       });
     });
@@ -176,7 +199,7 @@ describe('RoomsService', () => {
 
       await service.updateRoom(
         'room-1',
-        { name: 'Room B', location: 'Floor 2', capacity: 5, isActive: false } as any,
+        { name: 'Room B', location: 'Floor 2', capacity: 5 } as any,
         'user-2',
       );
 
@@ -184,10 +207,121 @@ describe('RoomsService', () => {
         name: 'Room B',
         capacity: 5,
         location: 'Floor 2',
-        isActive: false,
-        isAvailable: true,
         updatedBy: 'user-2',
       });
+    });
+  });
+
+  describe('updateRoomStatus', () => {
+    it('should throw NotFoundException when room not found', async () => {
+      (roomsRepo.findById as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        service.updateRoomStatus(
+          'room-404',
+          { action: 'MARK_MAINTENANCE', reason: 'test' } as any,
+          'user-1',
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should mark an available room as maintenance', async () => {
+      (roomsRepo.findById as jest.Mock).mockResolvedValue({
+        id: 'room-1',
+        isActive: true,
+        isAvailable: true,
+      });
+      (roomsRepo.updateRoom as jest.Mock).mockResolvedValue({ id: 'room-1' });
+
+      await service.updateRoomStatus(
+        'room-1',
+        { action: 'MARK_MAINTENANCE', reason: 'AV upgrade' } as any,
+        'user-1',
+      );
+
+      expect(roomsRepo.updateRoom).toHaveBeenCalledWith('room-1', {
+        isActive: true,
+        isAvailable: false,
+        reason: 'AV upgrade',
+        updatedBy: 'user-1',
+      });
+    });
+
+    it('should require reason when marking maintenance', async () => {
+      (roomsRepo.findById as jest.Mock).mockResolvedValue({
+        id: 'room-1',
+        isActive: true,
+        isAvailable: true,
+      });
+
+      await expect(
+        service.updateRoomStatus(
+          'room-1',
+          { action: 'MARK_MAINTENANCE' } as any,
+          'user-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should mark a maintenance room as available', async () => {
+      (roomsRepo.findById as jest.Mock).mockResolvedValue({
+        id: 'room-1',
+        isActive: true,
+        isAvailable: false,
+        reason: 'AV upgrade',
+      });
+      (roomsRepo.updateRoom as jest.Mock).mockResolvedValue({ id: 'room-1' });
+
+      await service.updateRoomStatus(
+        'room-1',
+        { action: 'MARK_AVAILABLE' } as any,
+        'user-1',
+      );
+
+      expect(roomsRepo.updateRoom).toHaveBeenCalledWith('room-1', {
+        isActive: true,
+        isAvailable: true,
+        reason: null,
+        updatedBy: 'user-1',
+      });
+    });
+
+    it('should deactivate a room', async () => {
+      (roomsRepo.findById as jest.Mock).mockResolvedValue({
+        id: 'room-1',
+        isActive: true,
+        isAvailable: true,
+      });
+      (roomsRepo.updateRoom as jest.Mock).mockResolvedValue({ id: 'room-1' });
+
+      await service.updateRoomStatus(
+        'room-1',
+        { action: 'DEACTIVATE' } as any,
+        'user-1',
+      );
+
+      expect(roomsRepo.updateRoom).toHaveBeenCalledWith('room-1', {
+        isActive: false,
+        isAvailable: false,
+        reason: 'Deactivated',
+        updatedBy: 'user-1',
+      });
+    });
+
+    it('should throw when marking an already available room as available', async () => {
+      (roomsRepo.findById as jest.Mock).mockResolvedValue({
+        id: 'room-1',
+        isActive: true,
+        isAvailable: true,
+      });
+
+      await expect(
+        service.updateRoomStatus(
+          'room-1',
+          { action: 'MARK_AVAILABLE' } as any,
+          'user-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -202,8 +336,12 @@ describe('RoomsService', () => {
       expect(roomsRepo.updateRoom).not.toHaveBeenCalled();
     });
 
-    it('should deactivate room and mark unavailable', async () => {
-      (roomsRepo.findById as jest.Mock).mockResolvedValue({ id: 'room-1' });
+    it('should deactivate room via state transition', async () => {
+      (roomsRepo.findById as jest.Mock).mockResolvedValue({
+        id: 'room-1',
+        isActive: true,
+        isAvailable: true,
+      });
       (roomsRepo.updateRoom as jest.Mock).mockResolvedValue({ id: 'room-1' });
 
       await service.deleteRoom('room-1', 'user-1');
@@ -211,7 +349,7 @@ describe('RoomsService', () => {
       expect(roomsRepo.updateRoom).toHaveBeenCalledWith('room-1', {
         isActive: false,
         isAvailable: false,
-        reason: 'Deleted',
+        reason: 'Deactivated',
         updatedBy: 'user-1',
       });
     });

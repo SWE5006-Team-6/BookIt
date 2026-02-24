@@ -5,8 +5,9 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { AuthModule } from './auth/auth.module';
-import { RoomModule } from './room/room.module';
+import { RoomsModule } from './rooms/rooms.module';
 import { BookingModule } from './booking/booking.module';
+import { BookingPolicyModule } from './booking-policy/booking-policy.module';
 
 @Module({
   imports: [
@@ -14,8 +15,9 @@ import { BookingModule } from './booking/booking.module';
     PrismaModule,
     SupabaseModule,
     AuthModule,
-    RoomModule,
+    RoomsModule,
     BookingModule,
+    BookingPolicyModule,
   ],
   controllers: [AppController],
   providers: [AppService],

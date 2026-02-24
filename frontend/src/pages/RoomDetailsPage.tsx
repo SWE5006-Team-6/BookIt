@@ -40,6 +40,7 @@ export function RoomDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
   const [message, setMessage] = useState<Message>(null);
 
   const [formData, setFormData] = useState({
@@ -47,6 +48,23 @@ export function RoomDetailsPage() {
     startAt: '',
     endAt: '',
   });
+
+  const getMinDateTime = () => {
+    const now = new Date();
+    const pad = (value: number) => value.toString().padStart(2, '0');
+    const year = now.getFullYear();
+    const month = pad(now.getMonth() + 1);
+    const day = pad(now.getDate());
+    const hours = pad(now.getHours());
+    const minutes = pad(now.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const getEndMinDateTime = () => {
+    const nowMin = getMinDateTime();
+    if (!formData.startAt) return nowMin;
+    return new Date(formData.startAt) > new Date(nowMin) ? formData.startAt : nowMin;
+  };
 
   useEffect(() => {
     if (!message) return;
@@ -64,7 +82,7 @@ export function RoomDetailsPage() {
   const loadRoomDetails = async () => {
     if (!id) return;
     try {
-      const data = await apiRequest<Room>(`/rooms/${id}`);
+      const data = await apiRequest<Room>(`/rooms/${id}`, { token: token ?? undefined });
       setRoom(data);
     } catch (error) {
       console.error('Failed to load room:', error);
@@ -77,7 +95,7 @@ export function RoomDetailsPage() {
   const loadBookings = async () => {
     if (!id) return;
     try {
-      const data = await apiRequest<Booking[]>(`/bookings/room/${id}`);
+      const data = await apiRequest<Booking[]>(`/bookings/room/${id}`, { token: token ?? undefined });
       setBookings(data);
     } catch (error) {
       console.error('Failed to load bookings:', error);
@@ -87,9 +105,26 @@ export function RoomDetailsPage() {
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
+    setBookingError(null);
     if (!token) {
-      setMessage({ type: 'error', title: 'Error', description: 'You must be signed in to book a room.' });
+      setBookingError('You must be signed in to book a room.');
       return;
+    }
+    if (formData.startAt && formData.endAt) {
+      const start = new Date(formData.startAt);
+      const end = new Date(formData.endAt);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        setBookingError('Please provide valid start and end times.');
+        return;
+      }
+      if (end <= start) {
+        setBookingError('End time must be later than start time.');
+        return;
+      }
+      if (end <= new Date()) {
+        setBookingError('End time must be later than the current time.');
+        return;
+      }
     }
     setIsBooking(true);
     try {
@@ -101,10 +136,11 @@ export function RoomDetailsPage() {
       setMessage({ type: 'success', title: 'Success', description: 'Room booked successfully' });
       setIsModalOpen(false);
       setFormData({ title: '', startAt: '', endAt: '' });
+      setBookingError(null);
       loadBookings();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Booking failed';
-      setMessage({ type: 'error', title: 'Error', description: errorMessage });
+      setBookingError(errorMessage);
     } finally {
       setIsBooking(false);
     }
@@ -161,7 +197,7 @@ export function RoomDetailsPage() {
                 <Heading size="xl">{room.name}</Heading>
                 <Text color="gray.600">Created by {room.createdBy || '—'}</Text>
               </VStack>
-              <Button bg="#4F46E5" color="white" _hover={{ bg: '#4338CA' }} size="lg" onClick={() => setIsModalOpen(true)}>
+              <Button bg="#4F46E5" color="white" _hover={{ bg: '#4338CA' }} size="lg" onClick={() => { setBookingError(null); setIsModalOpen(true); }}>
                 Book This Room
               </Button>
             </HStack>
@@ -236,7 +272,7 @@ export function RoomDetailsPage() {
         </Stack>
       </Stack>
 
-      <Dialog.Root open={isModalOpen} onOpenChange={(e) => setIsModalOpen(e.open)}>
+      <Dialog.Root open={isModalOpen} onOpenChange={(e) => { setIsModalOpen(e.open); if (!e.open) setBookingError(null); }}>
         <DialogBackdrop bg="blackAlpha.600" backdropFilter="blur(4px)" zIndex={1400} />
         <DialogPositioner display="flex" alignItems="flex-start" justifyContent="center" pt="12vh" pb="2rem" px="4" zIndex={1401}>
           <DialogContent maxW="420px" width="100%" maxH="90vh" bg="white" borderRadius="2xl" boxShadow="2xl" borderWidth="1px" borderColor="gray.200" p="0" overflow="hidden" display="flex" flexDirection="column">
@@ -249,6 +285,11 @@ export function RoomDetailsPage() {
             <form onSubmit={handleBook} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               <DialogBody p="6" overflowY="auto" flex="1">
                 <Stack gap="5">
+                  {bookingError && (
+                    <Box p="3" borderRadius="md" bg="red.50" color="red.700" fontSize="sm" borderWidth="1px" borderColor="red.200">
+                      {bookingError}
+                    </Box>
+                  )}
                   <Box bg="gray.50" borderRadius="lg" px="4" py="3">
                     <Text fontSize="sm" color="gray.600">You are booking</Text>
                     <Text fontWeight="semibold" color="gray.800" mt="0.5">{room.name}</Text>
@@ -268,7 +309,19 @@ export function RoomDetailsPage() {
                     <Input
                       type="datetime-local"
                       value={formData.startAt}
-                      onChange={(e) => setFormData({ ...formData, startAt: e.target.value })}
+                      onChange={(e) => {
+                        const nextStart = e.target.value;
+                        setFormData((prev) => {
+                          const shouldClearEnd =
+                            prev.endAt && new Date(prev.endAt) <= new Date(nextStart);
+                          return {
+                            ...prev,
+                            startAt: nextStart,
+                            endAt: shouldClearEnd ? '' : prev.endAt,
+                          };
+                        });
+                      }}
+                      min={getMinDateTime()}
                       required
                       borderColor="gray.200"
                     />
@@ -279,6 +332,7 @@ export function RoomDetailsPage() {
                       type="datetime-local"
                       value={formData.endAt}
                       onChange={(e) => setFormData({ ...formData, endAt: e.target.value })}
+                      min={getEndMinDateTime()}
                       required
                       borderColor="gray.200"
                     />
