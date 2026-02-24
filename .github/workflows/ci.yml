@@ -66,3 +66,28 @@ jobs:
             backend/package.json
             backend/package-lock.json
             backend/prisma
+
+  merge-artifacts:
+    name: Merge build artifacts for deploy
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && success()
+    needs: [frontend, backend]
+    steps:
+      - name: Download backend build
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-build
+
+      - name: Download frontend build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+
+      - name: Upload combined deploy artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-artifacts
+          path: |
+            backend-build
+            frontend-build
+          merge-multiple: true
