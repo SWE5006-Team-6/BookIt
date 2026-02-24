@@ -19,13 +19,23 @@ describe('SupabaseService', () => {
         {
           provide: ConfigService,
           useValue: {
-            getOrThrow: jest.fn((key: string) => {
+            get: jest.fn((key: string) => {
               const config: Record<string, string> = {
                 SUPABASE_URL: 'https://test.supabase.co',
                 SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
                 SUPABASE_ANON_KEY: 'test-anon-key',
               };
               return config[key];
+            }),
+            getOrThrow: jest.fn((key: string) => {
+              const config: Record<string, string> = {
+                SUPABASE_URL: 'https://test.supabase.co',
+                SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+                SUPABASE_ANON_KEY: 'test-anon-key',
+              };
+              const v = config[key];
+              if (v === undefined) throw new Error(`Config key "${key}" is missing`);
+              return v;
             }),
           },
         },

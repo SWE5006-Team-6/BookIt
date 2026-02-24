@@ -178,16 +178,15 @@ export function SettingsPage() {
         ) : enrollData ? (
           <Stack gap="4">
             <Text fontWeight="medium">Scan the QR code with your authenticator app:</Text>
-            <Box
-              as="img"
+            <img
               src={
                 enrollData.qrCode.startsWith('data:')
                   ? enrollData.qrCode
                   : `data:image/svg+xml,${encodeURIComponent(enrollData.qrCode)}`
               }
               alt="QR code for authenticator"
-              width="200px"
-              height="200px"
+              width={200}
+              height={200}
             />
             {enrollData.secret && (
               <Text fontSize="sm" color="gray.600">
