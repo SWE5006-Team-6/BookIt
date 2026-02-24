@@ -19,16 +19,10 @@ jobs:
       EC2_HOST: ${{ secrets.EC2_HOST }}
       EC2_USER: ${{ secrets.EC2_USER }}
     steps:
-      - name: Download backend build
+      - name: Download deploy artifacts
         uses: actions/download-artifact@v4
         with:
-          name: backend-build
-          run-id: ${{ github.event.workflow_run.id }}
-
-      - name: Download frontend build
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-build
+          name: deploy-artifacts
           run-id: ${{ github.event.workflow_run.id }}
 
       - name: Setup SSH key
