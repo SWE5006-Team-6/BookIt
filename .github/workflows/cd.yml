@@ -12,6 +12,9 @@ jobs:
     name: Deploy
     runs-on: ubuntu-latest
     if: github.event.workflow_run.conclusion == 'success'
+    permissions:
+      actions: read
+      contents: read
     env:
       EC2_HOST: ${{ secrets.EC2_HOST }}
       EC2_USER: ${{ secrets.EC2_USER }}
@@ -55,6 +58,16 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
+            if [ ! -f /swapfile ]; then
+              echo "Adding 2GB swap for free-tier EC2..."
+              sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
+              sudo chmod 600 /swapfile
+              sudo mkswap /swapfile
+              sudo swapon /swapfile
+              echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+              echo "Swap added."
+            fi
+
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             nvm use default
