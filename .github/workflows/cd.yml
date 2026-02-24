@@ -1,19 +1,53 @@
 name: Deploy to EC2
- 
+
 on:
   workflow_run:
     workflows: ["CI"]
     types:
       - completed
     branches: [main]
- 
+
 jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
     if: github.event.workflow_run.conclusion == 'success'
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+      EC2_USER: ${{ secrets.EC2_USER }}
     steps:
-      - name: Deploy via SSH
+      - name: Download backend build
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-build
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Download frontend build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Copy backend to EC2
+        run: |
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            backend-build/backend/ \
+            $EC2_USER@$EC2_HOST:~/BookIt/backend/
+
+      - name: Copy frontend to EC2
+        run: |
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            frontend-build/frontend/ \
+            $EC2_USER@$EC2_HOST:~/BookIt/frontend/
+
+      - name: Install deps and restart on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -24,20 +58,17 @@ jobs:
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             nvm use default
- 
-            cd ~/BookIt
-            git fetch origin main
-            git reset --hard origin/main
- 
+
             cd ~/BookIt/backend
-            npm ci
-            NODE_OPTIONS=--max-old-space-size=768 npm run build
-            pm2 restart bookit-api
- 
+            npm ci --omit=dev
+            npx prisma generate
+            pm2 delete bookit-api 2>/dev/null || true
+            pm2 start dist/main.js --name bookit-api
+
             cd ~/BookIt/frontend
-            npm ci
-            NODE_OPTIONS=--max-old-space-size=768 VITE_API_URL=${{ secrets.DEPLOY_API_URL }} npm run build
-            pm2 restart bookit-frontend
- 
+            npm ci --omit=dev
+            pm2 delete bookit-frontend 2>/dev/null || true
+            pm2 start "npx serve dist -l 5173" --name bookit-frontend
+
             pm2 save
             echo "Deploy complete."
