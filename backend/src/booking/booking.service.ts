@@ -14,6 +14,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RoomStateFactory } from '../rooms/state/room-state.factory';
 import { BookingPolicyChainService } from '../booking-policy/handlers/booking-policy-chain.service';
 
+const WORKDAY_START_MINUTES = 8 * 60;
+const WORKDAY_END_MINUTES = 18 * 60;
+
 @Injectable()
 export class BookingService {
   constructor(
@@ -52,6 +55,8 @@ export class BookingService {
     if (startAt < new Date()) {
       throw new BadRequestException('Cannot book in the past');
     }
+
+    this.assertWithinWorkingHours(startAt, endAt);
 
     const room = await this.prisma.room.findUnique({
       where: { id: dto.roomId },
@@ -118,6 +123,8 @@ export class BookingService {
         throw new BadRequestException('Start time must be before end time');
       }
 
+      this.assertWithinWorkingHours(startAt, endAt);
+
       const isAvailable = await this.bookingRepository.checkAvailability(
         existingBooking.roomId,
         startAt,
@@ -177,5 +184,29 @@ export class BookingService {
     throw new ForbiddenException(
       'You do not have permission to access this booking',
     );
+  }
+
+  private assertWithinWorkingHours(startAt: Date, endAt: Date) {
+    if (
+      startAt.getFullYear() !== endAt.getFullYear() ||
+      startAt.getMonth() !== endAt.getMonth() ||
+      startAt.getDate() !== endAt.getDate()
+    ) {
+      throw new BadRequestException(
+        'Bookings must start and end on the same day',
+      );
+    }
+
+    const startMinutes = startAt.getHours() * 60 + startAt.getMinutes();
+    const endMinutes = endAt.getHours() * 60 + endAt.getMinutes();
+
+    if (
+      startMinutes < WORKDAY_START_MINUTES ||
+      endMinutes > WORKDAY_END_MINUTES
+    ) {
+      throw new BadRequestException(
+        'Bookings must be within working hours (08:00 to 18:00)',
+      );
+    }
   }
 }
