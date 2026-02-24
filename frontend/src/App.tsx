@@ -10,6 +10,7 @@ import { useAuth } from './contexts/AuthContext';
 import QuickBookPage from './pages/QuickBookPage';
 import RoomsPage from './pages/RoomsPage';
 import { MyBookingsPage } from './pages/MyBookingsPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 function App() {
   const { user, isLoading } = useAuth();
@@ -47,6 +48,7 @@ function App() {
         <Route path="/rooms/:id" element={<RoomDetailsPage />} />
         <Route path="/quick-book" element={<QuickBookPage />} />
         <Route path="/bookings" element={<MyBookingsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>
   );

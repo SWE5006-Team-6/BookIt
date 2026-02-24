@@ -23,6 +23,7 @@ describe('SupabaseService', () => {
               const config: Record<string, string> = {
                 SUPABASE_URL: 'https://test.supabase.co',
                 SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+                SUPABASE_ANON_KEY: 'test-anon-key',
               };
               return config[key];
             }),
@@ -36,6 +37,16 @@ describe('SupabaseService', () => {
     expect(createClient).toHaveBeenCalledWith(
       'https://test.supabase.co',
       'test-service-role-key',
+    );
+    expect(service.getClientWithUserToken('user-jwt')).toBeDefined();
+    expect(createClient).toHaveBeenLastCalledWith(
+      'https://test.supabase.co',
+      'test-anon-key',
+      {
+        global: {
+          headers: { Authorization: 'Bearer user-jwt' },
+        },
+      },
     );
 
     expect(service.getClient()).toBeDefined();

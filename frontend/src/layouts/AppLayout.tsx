@@ -71,6 +71,15 @@ export function AppLayout() {
               >
                 <RouterLink to="/rooms">Rooms</RouterLink>
               </ChakraLink>
+              <ChakraLink
+                asChild
+                color="white"
+                opacity="0.85"
+                _hover={{ opacity: '1' }}
+                fontSize="sm"
+              >
+                <RouterLink to="/settings">Settings</RouterLink>
+              </ChakraLink>
             </HStack>
 
             {/* User info + sign out */}
