@@ -1,0 +1,39 @@
+name: Deploy to EC2
+ 
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+    branches: [main]
+ 
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/BookIt
+            git fetch origin main
+            git reset --hard origin/main
+ 
+            cd ~/BookIt/backend
+            npm ci
+            npm run build
+            pm2 restart bookit-api
+ 
+            cd ~/BookIt/frontend
+            npm ci
+            VITE_API_URL=${{ secrets.DEPLOY_API_URL }} npm run build
+            pm2 restart bookit-frontend
+ 
+            pm2 save
+            echo "Deploy complete."
