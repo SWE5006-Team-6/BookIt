@@ -14,13 +14,15 @@ interface User {
 interface AuthTokens {
   accessToken: string;
   refreshToken: string;
+  mfaRequired?: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<{ mfaRequired: boolean }>;
+  loginWithMfa: (code: string) => Promise<void>;
   register: (email: string, password: string, displayName?: string) => Promise<void>;
   logout: () => void;
 }
@@ -66,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchProfile();
   }, [logout]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<{ mfaRequired: boolean }> => {
     const tokens = await apiRequest<AuthTokens>('/auth/login', {
       method: 'POST',
       body: { email, password },
@@ -76,6 +78,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('refreshToken', tokens.refreshToken);
     setToken(tokens.accessToken);
 
+    if (tokens.mfaRequired) {
+      return { mfaRequired: true };
+    }
+
+    const profile = await apiRequest<User>('/auth/me', {
+      token: tokens.accessToken,
+    });
+    setUser(profile);
+    return { mfaRequired: false };
+  };
+
+  const loginWithMfa = async (code: string) => {
+    const storedToken = localStorage.getItem('accessToken');
+    if (!storedToken) {
+      throw new Error('Session expired. Please sign in again.');
+    }
+    const tokens = await apiRequest<AuthTokens>('/auth/mfa/verify', {
+      method: 'POST',
+      body: { code },
+      token: storedToken,
+    });
+    localStorage.setItem('accessToken', tokens.accessToken);
+    localStorage.setItem('refreshToken', tokens.refreshToken);
+    setToken(tokens.accessToken);
     const profile = await apiRequest<User>('/auth/me', {
       token: tokens.accessToken,
     });
@@ -94,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, loginWithMfa, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
