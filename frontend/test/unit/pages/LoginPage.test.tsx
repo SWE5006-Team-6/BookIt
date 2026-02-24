@@ -27,6 +27,7 @@ describe('LoginPage', () => {
     vi.clearAllMocks();
     mockUseAuth.mockReturnValue({
       login: mockLogin,
+      loginWithMfa: vi.fn(),
       user: null,
       token: null,
       isLoading: false,
@@ -54,7 +55,7 @@ describe('LoginPage', () => {
   });
 
   it('should call login with email and password on form submission', async () => {
-    mockLogin.mockResolvedValue(undefined);
+    mockLogin.mockResolvedValue({ mfaRequired: false });
     const user = userEvent.setup();
 
     renderWithProviders(<LoginPage />);
@@ -69,7 +70,7 @@ describe('LoginPage', () => {
   });
 
   it('should navigate to dashboard on successful login', async () => {
-    mockLogin.mockResolvedValue(undefined);
+    mockLogin.mockResolvedValue({ mfaRequired: false });
     const user = userEvent.setup();
 
     renderWithProviders(<LoginPage />);

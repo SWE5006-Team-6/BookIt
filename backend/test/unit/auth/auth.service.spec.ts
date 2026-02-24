@@ -19,6 +19,16 @@ describe('AuthService', () => {
     },
   };
 
+  const mockUserClient = {
+    auth: {
+      mfa: {
+        listFactors: jest.fn().mockResolvedValue({
+          data: { totp: [], phone: [] },
+        }),
+      },
+    },
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -36,6 +46,8 @@ describe('AuthService', () => {
           provide: SupabaseService,
           useValue: {
             getClient: jest.fn().mockReturnValue(mockSupabaseClient),
+            getPublicClient: jest.fn().mockReturnValue(mockSupabaseClient),
+            getClientWithUserToken: jest.fn().mockReturnValue(mockUserClient),
           },
         },
       ],
@@ -174,6 +186,30 @@ describe('AuthService', () => {
       expect(result).toEqual({
         accessToken: 'jwt-access-token',
         refreshToken: 'jwt-refresh-token',
+        mfaRequired: false,
+      });
+    });
+
+    it('should return mfaRequired true when user has MFA enrolled but not verified', async () => {
+      mockSupabaseClient.auth.signInWithPassword.mockResolvedValue({
+        data: {
+          session: {
+            access_token: 'jwt-access-token',
+            refresh_token: 'jwt-refresh-token',
+          },
+        },
+        error: null,
+      });
+      mockUserClient.auth.mfa.listFactors.mockResolvedValue({
+        data: { totp: [{ id: 'factor-1' }], phone: [] },
+      });
+
+      const result = await service.login(loginDto);
+
+      expect(result).toEqual({
+        accessToken: 'jwt-access-token',
+        refreshToken: 'jwt-refresh-token',
+        mfaRequired: true,
       });
     });
 

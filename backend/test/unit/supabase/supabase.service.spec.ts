@@ -19,12 +19,23 @@ describe('SupabaseService', () => {
         {
           provide: ConfigService,
           useValue: {
+            get: jest.fn((key: string) => {
+              const config: Record<string, string> = {
+                SUPABASE_URL: 'https://test.supabase.co',
+                SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+                SUPABASE_ANON_KEY: 'test-anon-key',
+              };
+              return config[key];
+            }),
             getOrThrow: jest.fn((key: string) => {
               const config: Record<string, string> = {
                 SUPABASE_URL: 'https://test.supabase.co',
                 SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+                SUPABASE_ANON_KEY: 'test-anon-key',
               };
-              return config[key];
+              const v = config[key];
+              if (v === undefined) throw new Error(`Config key "${key}" is missing`);
+              return v;
             }),
           },
         },
@@ -37,12 +48,23 @@ describe('SupabaseService', () => {
       'https://test.supabase.co',
       'test-service-role-key',
     );
+    expect(service.getClientWithUserToken('user-jwt')).toBeDefined();
+    expect(createClient).toHaveBeenLastCalledWith(
+      'https://test.supabase.co',
+      'test-anon-key',
+      {
+        global: {
+          headers: { Authorization: 'Bearer user-jwt' },
+        },
+      },
+    );
 
     expect(service.getClient()).toBeDefined();
   });
 
   it('should throw when SUPABASE_URL is missing', async () => {
     const mockConfigService = {
+      get: jest.fn(() => undefined),
       getOrThrow: jest.fn((key: string) => {
         if (key === 'SUPABASE_URL') {
           throw new Error('Config key "SUPABASE_URL" is missing');
@@ -63,11 +85,13 @@ describe('SupabaseService', () => {
 
   it('should throw when SUPABASE_SERVICE_ROLE_KEY is missing', async () => {
     const mockConfigService = {
+      get: jest.fn((key: string) => (key === 'SUPABASE_ANON_KEY' ? 'test-anon-key' : undefined)),
       getOrThrow: jest.fn((key: string) => {
         if (key === 'SUPABASE_SERVICE_ROLE_KEY') {
           throw new Error('Config key "SUPABASE_SERVICE_ROLE_KEY" is missing');
         }
-        return 'https://test.supabase.co';
+        if (key === 'SUPABASE_URL') return 'https://test.supabase.co';
+        return 'some-value';
       }),
     };
 

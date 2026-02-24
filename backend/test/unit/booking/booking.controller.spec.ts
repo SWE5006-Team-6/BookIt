@@ -1,8 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BookingController } from './booking.controller';
-import { BookingService } from './booking.service';
-import { CreateBookingDto } from './dto/create-booking.dto';
-import { UpdateBookingDto } from './dto/update-booking.dto';
+import { UserRole } from '@prisma/client';
+import { BookingController } from '../../../src/booking/booking.controller';
+import { BookingService } from '../../../src/booking/booking.service';
+import { CreateBookingDto } from '../../../src/booking/dto/create-booking.dto';
+import { UpdateBookingDto } from '../../../src/booking/dto/update-booking.dto';
+import { SupabaseAuthGuard } from '../../../src/auth/guards/supabase-auth.guard';
+import { RolesGuard } from '../../../src/auth/guards/roles.guard';
 
 describe('BookingController', () => {
   let controller: BookingController;
@@ -31,6 +34,11 @@ describe('BookingController', () => {
     updatedAt: new Date(),
   };
 
+  const mockUser = {
+    id: 'user-1',
+    role: UserRole.USER,
+  } as any;
+
   const mockBookingService = {
     findAll: jest.fn().mockResolvedValue([mockBooking]),
     findById: jest.fn().mockResolvedValue(mockBooking),
@@ -50,7 +58,12 @@ describe('BookingController', () => {
           useValue: mockBookingService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(SupabaseAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(RolesGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<BookingController>(BookingController);
     service = module.get<BookingService>(BookingService);
@@ -82,17 +95,17 @@ describe('BookingController', () => {
 
   describe('findByUserId', () => {
     it('should return bookings for a user', async () => {
-      const result = await controller.findByUserId('user-1');
+      const result = await controller.findByUserId('user-1', mockUser);
       expect(result).toEqual([mockBooking]);
-      expect(service.findByUserId).toHaveBeenCalledWith('user-1');
+      expect(service.findByUserId).toHaveBeenCalledWith('user-1', mockUser);
     });
   });
 
   describe('findById', () => {
     it('should return a booking by id', async () => {
-      const result = await controller.findById('1');
+      const result = await controller.findById('1', mockUser);
       expect(result).toEqual(mockBooking);
-      expect(service.findById).toHaveBeenCalledWith('1');
+      expect(service.findById).toHaveBeenCalledWith('1', mockUser);
     });
   });
 
@@ -117,23 +130,31 @@ describe('BookingController', () => {
     };
 
     it('should update a booking', async () => {
-      const result = await controller.update('1', updateDto);
+      const result = await controller.update('1', updateDto, mockUser);
       expect(result).toEqual(mockBooking);
-      expect(service.update).toHaveBeenCalledWith('1', updateDto);
+      expect(service.update).toHaveBeenCalledWith('1', updateDto, mockUser);
     });
   });
 
   describe('cancel', () => {
     it('should cancel a booking', async () => {
-      const result = await controller.cancel('1', { reason: 'Meeting cancelled' });
+      const result = await controller.cancel(
+        '1',
+        { reason: 'Meeting cancelled' },
+        mockUser,
+      );
       expect(result).toEqual(mockBooking);
-      expect(service.cancel).toHaveBeenCalledWith('1', 'Meeting cancelled');
+      expect(service.cancel).toHaveBeenCalledWith(
+        '1',
+        'Meeting cancelled',
+        mockUser,
+      );
     });
 
     it('should cancel a booking without reason', async () => {
-      const result = await controller.cancel('1', {});
+      const result = await controller.cancel('1', {}, mockUser);
       expect(result).toEqual(mockBooking);
-      expect(service.cancel).toHaveBeenCalledWith('1', undefined);
+      expect(service.cancel).toHaveBeenCalledWith('1', undefined, mockUser);
     });
   });
 });

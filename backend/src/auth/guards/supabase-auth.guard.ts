@@ -42,8 +42,9 @@ export class SupabaseAuthGuard implements CanActivate {
       throw new UnauthorizedException('User not found or deactivated');
     }
 
-    // Attach the full user to the request for downstream use
+    // Attach the full user and token for downstream use (e.g. MFA endpoints)
     request.user = user;
+    request.bearerToken = token;
     return true;
   }
 

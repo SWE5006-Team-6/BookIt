@@ -1,18 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
   Card,
   Container,
-  Dialog,
-  DialogBackdrop,
-  DialogPositioner,
-  DialogContent,
-  DialogTitle,
-  DialogBody,
-  DialogFooter,
-  DialogCloseTrigger,
+  Drawer,
+  DrawerBackdrop,
+  DrawerPositioner,
+  DrawerContent,
+  DrawerTitle,
+  DrawerBody,
+  DrawerFooter,
+  DrawerCloseTrigger,
   Field,
   Heading,
   HStack,
@@ -27,8 +27,52 @@ import {
 import type { Room, Booking } from '../types/room.types';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
+import { TimeSlotGrid } from '../components/booking/TimeSlotGrid';
+import {
+  buildEndSlotOptions,
+  buildStartSlotOptions,
+  combineDateAndTime,
+  DEFAULT_BOOKING_UI_CONSTRAINTS,
+  getInitialBookingDate,
+  getMaxDateInputValue,
+  toDateInputValue,
+  type BookingUiConstraints,
+} from '../lib/booking-slots';
 
 type Message = { type: 'success' | 'error'; title: string; description?: string } | null;
+
+interface BookingPolicy {
+  key: string;
+  value: string;
+  isActive: boolean;
+}
+
+function parseBookingUiConstraints(policies: BookingPolicy[]): BookingUiConstraints {
+  const next: BookingUiConstraints = { ...DEFAULT_BOOKING_UI_CONSTRAINTS };
+
+  for (const policy of policies) {
+    const parsedValue = Number(policy.value);
+    const validNumber = Number.isFinite(parsedValue) && parsedValue >= 0;
+
+    if (policy.key === 'min_duration_minutes') {
+      next.minDurationMinutes = policy.isActive && validNumber ? parsedValue : 0;
+    }
+
+    if (policy.key === 'min_advance_minutes') {
+      next.minAdvanceMinutes = policy.isActive && validNumber ? parsedValue : 0;
+    }
+
+    if (policy.key === 'max_duration_minutes') {
+      next.maxDurationMinutes = policy.isActive && validNumber ? parsedValue : null;
+    }
+
+    if (policy.key === 'max_advance_days') {
+      next.maxAdvanceDays = policy.isActive && validNumber ? parsedValue : null;
+    }
+  }
+
+  return next;
+}
 
 export function RoomDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -42,29 +86,16 @@ export function RoomDetailsPage() {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [message, setMessage] = useState<Message>(null);
+  const [bookingConstraints, setBookingConstraints] = useState<BookingUiConstraints>(
+    DEFAULT_BOOKING_UI_CONSTRAINTS,
+  );
 
   const [formData, setFormData] = useState({
     title: '',
-    startAt: '',
-    endAt: '',
   });
-
-  const getMinDateTime = () => {
-    const now = new Date();
-    const pad = (value: number) => value.toString().padStart(2, '0');
-    const year = now.getFullYear();
-    const month = pad(now.getMonth() + 1);
-    const day = pad(now.getDate());
-    const hours = pad(now.getHours());
-    const minutes = pad(now.getMinutes());
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
-
-  const getEndMinDateTime = () => {
-    const nowMin = getMinDateTime();
-    if (!formData.startAt) return nowMin;
-    return new Date(formData.startAt) > new Date(nowMin) ? formData.startAt : nowMin;
-  };
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedStartTime, setSelectedStartTime] = useState('');
+  const [selectedEndTime, setSelectedEndTime] = useState('');
 
   useEffect(() => {
     if (!message) return;
@@ -73,11 +104,15 @@ export function RoomDetailsPage() {
   }, [message]);
 
   useEffect(() => {
-    if (id) {
-      loadRoomDetails();
-      loadBookings();
-    }
+    if (!id) return;
+    loadRoomDetails();
+    loadBookings();
   }, [id]);
+
+  useEffect(() => {
+    if (!token) return;
+    loadBookingPolicies();
+  }, [token]);
 
   const loadRoomDetails = async () => {
     if (!id) return;
@@ -102,41 +137,118 @@ export function RoomDetailsPage() {
     }
   };
 
+  const loadBookingPolicies = async () => {
+    try {
+      const data = await apiRequest<BookingPolicy[]>('/booking-policies', {
+        token: token ?? undefined,
+      });
+      setBookingConstraints(parseBookingUiConstraints(data));
+    } catch (error) {
+      console.error('Failed to load booking policies:', error);
+    }
+  };
+
+  const resetBookingForm = () => {
+    setFormData({ title: '' });
+    setSelectedDate(getInitialBookingDate(bookingConstraints));
+    setSelectedStartTime('');
+    setSelectedEndTime('');
+    setBookingError(null);
+  };
+
+  const openBookingModal = () => {
+    resetBookingForm();
+    setIsModalOpen(true);
+  };
+
+  const closeBookingModal = () => {
+    setIsModalOpen(false);
+    setBookingError(null);
+  };
+
+  const minBookingDate = toDateInputValue(new Date());
+  const maxBookingDate = getMaxDateInputValue(bookingConstraints);
+  const startSlots = selectedDate
+    ? buildStartSlotOptions({
+        selectedDate,
+        bookings,
+        constraints: bookingConstraints,
+      })
+    : [];
+  const endSlots = selectedDate && selectedStartTime
+    ? buildEndSlotOptions({
+        selectedDate,
+        startTime: selectedStartTime,
+        bookings,
+        constraints: bookingConstraints,
+      })
+    : [];
+
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
     setBookingError(null);
+
     if (!token) {
       setBookingError('You must be signed in to book a room.');
       return;
     }
-    if (formData.startAt && formData.endAt) {
-      const start = new Date(formData.startAt);
-      const end = new Date(formData.endAt);
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-        setBookingError('Please provide valid start and end times.');
-        return;
-      }
-      if (end <= start) {
-        setBookingError('End time must be later than start time.');
-        return;
-      }
-      if (end <= new Date()) {
-        setBookingError('End time must be later than the current time.');
-        return;
-      }
+
+    if (!selectedDate) {
+      setBookingError('Please select a booking date.');
+      return;
     }
+
+    if (!selectedStartTime) {
+      setBookingError('Please select a start time.');
+      return;
+    }
+
+    if (!selectedEndTime) {
+      setBookingError('Please select an end time.');
+      return;
+    }
+
+    const selectedStartSlot = startSlots.find((slot) => slot.time === selectedStartTime);
+    if (!selectedStartSlot || selectedStartSlot.disabled) {
+      setBookingError('Please select an available start time slot.');
+      return;
+    }
+
+    const selectedEndSlot = endSlots.find((slot) => slot.time === selectedEndTime);
+    if (!selectedEndSlot || selectedEndSlot.disabled) {
+      setBookingError('Please select an available end time slot.');
+      return;
+    }
+
+    const startAt = combineDateAndTime(selectedDate, selectedStartTime);
+    const endAt = combineDateAndTime(selectedDate, selectedEndTime);
+    const start = new Date(startAt);
+    const end = new Date(endAt);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      setBookingError('Please provide valid start and end times.');
+      return;
+    }
+    if (end <= start) {
+      setBookingError('End time must be later than start time.');
+      return;
+    }
+    if (end <= new Date()) {
+      setBookingError('End time must be later than the current time.');
+      return;
+    }
+
     setIsBooking(true);
     try {
       await apiRequest('/bookings', {
         method: 'POST',
-        body: { ...formData, roomId: id },
+        body: { ...formData, startAt, endAt, roomId: id },
         token: token ?? undefined,
       });
       setMessage({ type: 'success', title: 'Success', description: 'Room booked successfully' });
-      setIsModalOpen(false);
-      setFormData({ title: '', startAt: '', endAt: '' });
-      setBookingError(null);
+      closeBookingModal();
+      resetBookingForm();
       loadBookings();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Booking failed';
@@ -144,6 +256,39 @@ export function RoomDetailsPage() {
     } finally {
       setIsBooking(false);
     }
+  };
+
+  const handleStartTimeSelect = (time: string) => {
+    if (selectedStartTime === time) {
+      setSelectedStartTime('');
+      setSelectedEndTime('');
+      return;
+    }
+
+    setSelectedStartTime(time);
+
+    if (!selectedDate || !selectedEndTime) return;
+
+    const nextEndSlots = buildEndSlotOptions({
+      selectedDate,
+      startTime: time,
+      bookings,
+      constraints: bookingConstraints,
+    });
+    const currentEndStillValid = nextEndSlots.some(
+      (slot) => slot.time === selectedEndTime && !slot.disabled,
+    );
+    if (!currentEndStillValid) {
+      setSelectedEndTime('');
+    }
+  };
+
+  const handleEndTimeSelect = (time: string) => {
+    if (selectedEndTime === time) {
+      setSelectedEndTime('');
+      return;
+    }
+    setSelectedEndTime(time);
   };
 
   const formatDate = (dateString: string) =>
@@ -187,7 +332,7 @@ export function RoomDetailsPage() {
         )}
 
         <Button variant="ghost" color="#4F46E5" onClick={() => navigate('/rooms')} width="fit-content">
-          ← Back to Rooms
+          {'<- Back to Rooms'}
         </Button>
 
         <Card.Root p="8" borderWidth="1px" borderColor="gray.200" borderRadius="lg" bg="white">
@@ -195,9 +340,9 @@ export function RoomDetailsPage() {
             <HStack justify="space-between" width="full" align="start">
               <VStack align="start" gap="2">
                 <Heading size="xl">{room.name}</Heading>
-                <Text color="gray.600">Created by {room.createdBy || '—'}</Text>
+                <Text color="gray.600">Created by {room.createdBy || '-'}</Text>
               </VStack>
-              <Button bg="#4F46E5" color="white" _hover={{ bg: '#4338CA' }} size="lg" onClick={() => { setBookingError(null); setIsModalOpen(true); }}>
+              <Button bg="#4F46E5" color="white" _hover={{ bg: '#4338CA' }} size="lg" onClick={openBookingModal}>
                 Book This Room
               </Button>
             </HStack>
@@ -254,7 +399,7 @@ export function RoomDetailsPage() {
                     {bookings.map((booking) => (
                       <Table.Row key={booking.id}>
                         <Table.Cell fontWeight="medium">{booking.title}</Table.Cell>
-                        <Table.Cell>{booking.bookedBy?.displayName ?? booking.bookedBy?.email ?? '—'}</Table.Cell>
+                        <Table.Cell>{booking.bookedBy?.displayName ?? booking.bookedBy?.email ?? '-'}</Table.Cell>
                         <Table.Cell>{formatDate(booking.startAt)}</Table.Cell>
                         <Table.Cell>{formatDate(booking.endAt)}</Table.Cell>
                         <Table.Cell>
@@ -272,18 +417,41 @@ export function RoomDetailsPage() {
         </Stack>
       </Stack>
 
-      <Dialog.Root open={isModalOpen} onOpenChange={(e) => { setIsModalOpen(e.open); if (!e.open) setBookingError(null); }}>
-        <DialogBackdrop bg="blackAlpha.600" backdropFilter="blur(4px)" zIndex={1400} />
-        <DialogPositioner display="flex" alignItems="flex-start" justifyContent="center" pt="12vh" pb="2rem" px="4" zIndex={1401}>
-          <DialogContent maxW="420px" width="100%" maxH="90vh" bg="white" borderRadius="2xl" boxShadow="2xl" borderWidth="1px" borderColor="gray.200" p="0" overflow="hidden" display="flex" flexDirection="column">
+      <Drawer.Root
+        open={isModalOpen}
+        onOpenChange={(e) => {
+          setIsModalOpen(e.open);
+          if (!e.open) {
+            setBookingError(null);
+          }
+        }}
+        placement={{ base: 'bottom', md: 'end' }}
+        size={{ base: 'full', md: 'md' }}
+      >
+        <DrawerBackdrop bg="blackAlpha.600" backdropFilter="blur(4px)" zIndex={1400} />
+        <DrawerPositioner zIndex={1401}>
+          <DrawerContent
+            maxW={{ base: '100vw', md: '560px' }}
+            width="100%"
+            h={{ base: '85vh', md: '100vh' }}
+            maxH={{ base: '85vh', md: '100vh' }}
+            bg="white"
+            borderRadius={{ base: '2xl 2xl 0 0', md: '0' }}
+            boxShadow="2xl"
+            borderWidth="0"
+            p="0"
+            overflow="hidden"
+            display="flex"
+            flexDirection="column"
+          >
             <Box bg="#4F46E5" px="6" py="5" position="relative">
-              <DialogTitle fontSize="xl" fontWeight="bold" color="white" margin="0">Book Room</DialogTitle>
-              <DialogCloseTrigger asChild>
-                <Button variant="ghost" position="absolute" right="2" top="2" color="white" _hover={{ bg: 'whiteAlpha.200' }} size="sm">×</Button>
-              </DialogCloseTrigger>
+              <DrawerTitle fontSize="xl" fontWeight="bold" color="white" margin="0">Book Room</DrawerTitle>
+              <DrawerCloseTrigger asChild>
+                <Button variant="ghost" position="absolute" right="2" top="2" color="white" _hover={{ bg: 'whiteAlpha.200' }} size="sm">x</Button>
+              </DrawerCloseTrigger>
             </Box>
             <form onSubmit={handleBook} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-              <DialogBody p="6" overflowY="auto" flex="1">
+              <DrawerBody p="6" overflowY="auto" flex="1">
                 <Stack gap="5">
                   {bookingError && (
                     <Box p="3" borderRadius="md" bg="red.50" color="red.700" fontSize="sm" borderWidth="1px" borderColor="red.200">
@@ -305,48 +473,65 @@ export function RoomDetailsPage() {
                     />
                   </Field.Root>
                   <Field.Root>
-                    <Field.Label fontWeight="medium" color="gray.700">Start Date & Time</Field.Label>
+                    <Field.Label fontWeight="medium" color="gray.700">Booking Date</Field.Label>
                     <Input
-                      type="datetime-local"
-                      value={formData.startAt}
+                      type="date"
+                      value={selectedDate}
                       onChange={(e) => {
-                        const nextStart = e.target.value;
-                        setFormData((prev) => {
-                          const shouldClearEnd =
-                            prev.endAt && new Date(prev.endAt) <= new Date(nextStart);
-                          return {
-                            ...prev,
-                            startAt: nextStart,
-                            endAt: shouldClearEnd ? '' : prev.endAt,
-                          };
-                        });
+                        setSelectedDate(e.target.value);
+                        setSelectedStartTime('');
+                        setSelectedEndTime('');
                       }}
-                      min={getMinDateTime()}
+                      min={minBookingDate}
+                      max={maxBookingDate}
                       required
                       borderColor="gray.200"
                     />
+                    <Text fontSize="xs" color="gray.500" mt="2">
+                      Working hours are 08:00 to 18:00. Slots are shown in 30-minute increments.
+                    </Text>
                   </Field.Root>
-                  <Field.Root>
-                    <Field.Label fontWeight="medium" color="gray.700">End Date & Time</Field.Label>
-                    <Input
-                      type="datetime-local"
-                      value={formData.endAt}
-                      onChange={(e) => setFormData({ ...formData, endAt: e.target.value })}
-                      min={getEndMinDateTime()}
-                      required
-                      borderColor="gray.200"
-                    />
-                  </Field.Root>
+
+                  <TimeSlotGrid
+                    label="Start Time"
+                    slots={startSlots}
+                    selectedTime={selectedStartTime}
+                    onSelect={handleStartTimeSelect}
+                    emptyMessage="Select a booking date to view available start times."
+                  />
+
+                  <TimeSlotGrid
+                    label="End Time"
+                    slots={endSlots}
+                    selectedTime={selectedEndTime}
+                    onSelect={handleEndTimeSelect}
+                    emptyMessage="Select a start time to view valid end times."
+                  />
+
+                  {(selectedDate || selectedStartTime || selectedEndTime) && (
+                    <Box bg="blue.50" borderWidth="1px" borderColor="blue.100" borderRadius="lg" px="4" py="3">
+                      <Text fontSize="sm" color="blue.700">Date: {selectedDate || '-'}</Text>
+                      <Text fontSize="sm" color="blue.700">Time: {selectedStartTime || '-'} to {selectedEndTime || '-'}</Text>
+                    </Box>
+                  )}
                 </Stack>
-              </DialogBody>
-              <DialogFooter gap="3" p="6" pt="4" borderTopWidth="1px" borderColor="gray.100">
-                <Button variant="ghost" onClick={() => setIsModalOpen(false)} color="gray.600">Cancel</Button>
+              </DrawerBody>
+              <DrawerFooter
+                gap="3"
+                p="6"
+                pt="4"
+                borderTopWidth="1px"
+                borderColor="gray.100"
+                bg="white"
+                justifyContent="flex-end"
+              >
+                <Button variant="ghost" onClick={closeBookingModal} color="gray.600">Cancel</Button>
                 <Button type="submit" bg="#4F46E5" color="white" _hover={{ bg: '#4338CA' }} loading={isBooking} fontWeight="semibold" px="6">Confirm Booking</Button>
-              </DialogFooter>
+              </DrawerFooter>
             </form>
-          </DialogContent>
-        </DialogPositioner>
-      </Dialog.Root>
+          </DrawerContent>
+        </DrawerPositioner>
+      </Drawer.Root>
     </Container>
   );
 }
