@@ -97,7 +97,7 @@ jobs:
             npm ci --omit=dev
             npx prisma generate
             pm2 delete bookit-api 2>/dev/null || true
-            pm2 start dist/main.js --name bookit-api
+            pm2 start dist/src/main.js --name bookit-api
 
             cd ~/BookIt/frontend
             npm ci --omit=dev
