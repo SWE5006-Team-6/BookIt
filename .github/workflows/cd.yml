@@ -31,12 +31,12 @@ jobs:
  
             cd ~/BookIt/backend
             npm ci
-            npm run build
+            NODE_OPTIONS=--max-old-space-size=512 npm run build
             pm2 restart bookit-api
  
             cd ~/BookIt/frontend
             npm ci
-            VITE_API_URL=${{ secrets.DEPLOY_API_URL }} npm run build
+            NODE_OPTIONS=--max-old-space-size=512 VITE_API_URL=${{ secrets.DEPLOY_API_URL }} npm run build
             pm2 restart bookit-frontend
  
             pm2 save
