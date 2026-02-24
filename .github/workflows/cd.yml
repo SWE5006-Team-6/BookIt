@@ -19,11 +19,38 @@ jobs:
       EC2_HOST: ${{ secrets.EC2_HOST }}
       EC2_USER: ${{ secrets.EC2_USER }}
     steps:
-      - name: Download deploy artifacts
-        uses: actions/download-artifact@v4
+      - name: Checkout at CI commit
+        uses: actions/checkout@v4
         with:
-          name: deploy-artifacts
-          run-id: ${{ github.event.workflow_run.id }}
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Setup Node (backend)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Build backend
+        run: |
+          cd backend
+          npm ci
+          npm run build
+
+      - name: Setup Node (frontend)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+        env:
+          VITE_API_URL: ${{ secrets.DEPLOY_API_URL }}
 
       - name: Setup SSH key
         run: |
@@ -35,13 +62,13 @@ jobs:
       - name: Copy backend to EC2
         run: |
           rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            backend-build/backend/ \
+            backend/dist backend/package.json backend/package-lock.json backend/prisma \
             $EC2_USER@$EC2_HOST:~/BookIt/backend/
 
       - name: Copy frontend to EC2
         run: |
           rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            frontend-build/frontend/ \
+            frontend/dist frontend/package.json frontend/package-lock.json \
             $EC2_USER@$EC2_HOST:~/BookIt/frontend/
 
       - name: Install deps and restart on EC2
