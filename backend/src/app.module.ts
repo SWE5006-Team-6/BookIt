@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { RoomsModule } from './rooms/rooms.module';
 import { BookingModule } from './booking/booking.module';
 import { BookingPolicyModule } from './booking-policy/booking-policy.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { BookingPolicyModule } from './booking-policy/booking-policy.module';
     RoomsModule,
     BookingModule,
     BookingPolicyModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

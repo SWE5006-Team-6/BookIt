@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
+  Logger,
   ForbiddenException,
 } from '@nestjs/common';
 import { BookingRepository } from './booking.repository';
@@ -13,16 +14,31 @@ import type { User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RoomStateFactory } from '../rooms/state/room-state.factory';
 import { BookingPolicyChainService } from '../booking-policy/handlers/booking-policy-chain.service';
+import { NotificationService } from '../notification/notification.service';
+import { BookingNotificationData } from './types/booking-notification.types';
+
+type BookingNotificationSource = {
+  id: string;
+  room: { name: string | null };
+  bookedBy: { email: string | null; displayName: string | null };
+  title: string;
+  startAt: Date;
+  endAt: Date;
+  cancelReason?: string | null;
+};
 
 const WORKDAY_START_MINUTES = 8 * 60;
 const WORKDAY_END_MINUTES = 18 * 60;
 
 @Injectable()
 export class BookingService {
+  private readonly logger = new Logger(BookingService.name);
+
   constructor(
     private readonly bookingRepository: BookingRepository,
     private readonly prisma: PrismaService,
     private readonly policyChain: BookingPolicyChainService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async findAll() {
@@ -85,7 +101,7 @@ export class BookingService {
     }
 
     try {
-      return await this.bookingRepository.create({
+      const booking = await this.bookingRepository.create({
         roomId: dto.roomId,
         bookedById,
         title: dto.title,
@@ -93,6 +109,12 @@ export class BookingService {
         endAt,
         status: dto.status || BookingStatus.CONFIRMED,
       });
+
+      if (booking.status === BookingStatus.CONFIRMED) {
+        await this.sendBookingNotification('confirmed', booking);
+      }
+
+      return booking;
     } catch (error: unknown) {
       const prismaError = error as { code?: string };
       if (prismaError?.code === 'P2021') {
@@ -149,7 +171,55 @@ export class BookingService {
       throw new BadRequestException('Booking is already cancelled');
     }
 
-    return this.bookingRepository.cancel(id, reason);
+    const cancelledBooking = await this.bookingRepository.cancel(id, reason);
+    await this.sendBookingNotification('cancelled', cancelledBooking);
+
+    return cancelledBooking;
+  }
+
+  private async sendBookingNotification(
+    kind: 'confirmed' | 'cancelled',
+    booking: BookingNotificationSource,
+  ) {
+    if (!booking.bookedBy.email) {
+      this.logger.warn(
+        `Skipping ${kind} email for booking ${booking.id}: user email is missing`,
+      );
+      return;
+    }
+
+    const payload = this.mapBookingToTemplateData(booking);
+
+    try {
+      if (kind === 'confirmed') {
+        await this.notificationService.sendBookingConfirmedEmail(payload);
+      } else {
+        await this.notificationService.sendBookingCancelledEmail(payload);
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to send ${kind} email for booking ${booking.id}: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  private mapBookingToTemplateData(
+    booking: BookingNotificationSource,
+  ): BookingNotificationData {
+    const email = booking.bookedBy.email;
+    if (!email) {
+      throw new Error('Booking user email is missing');
+    }
+
+    return {
+      email,
+      name: booking.bookedBy.displayName ?? email,
+      roomName: booking.room.name ?? 'Room',
+      title: booking.title,
+      startAt: booking.startAt,
+      endAt: booking.endAt,
+      cancelReason: booking.cancelReason ?? undefined,
+    };
   }
 
   private async getBookingOrThrow(id: string) {

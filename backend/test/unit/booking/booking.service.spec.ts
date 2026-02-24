@@ -4,6 +4,7 @@ import { UserRole } from '@prisma/client';
 import { BookingRepository } from '../../../src/booking/booking.repository';
 import { BookingService } from '../../../src/booking/booking.service';
 import { BookingPolicyChainService } from '../../../src/booking-policy/handlers/booking-policy-chain.service';
+import { NotificationService } from '../../../src/notification/notification.service';
 import { PrismaService } from '../../../src/prisma/prisma.service';
 
 describe('BookingService', () => {
@@ -21,6 +22,10 @@ describe('BookingService', () => {
   };
   let policyChain: {
     validate: jest.Mock;
+  };
+  let notificationService: {
+    sendBookingConfirmedEmail: jest.Mock;
+    sendBookingCancelledEmail: jest.Mock;
   };
 
   const room = {
@@ -60,12 +65,18 @@ describe('BookingService', () => {
       validate: jest.fn().mockResolvedValue(undefined),
     };
 
+    notificationService = {
+      sendBookingConfirmedEmail: jest.fn().mockResolvedValue(undefined),
+      sendBookingCancelledEmail: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BookingService,
         { provide: BookingRepository, useValue: bookingRepository },
         { provide: PrismaService, useValue: prisma },
         { provide: BookingPolicyChainService, useValue: policyChain },
+        { provide: NotificationService, useValue: notificationService },
       ],
     }).compile();
 

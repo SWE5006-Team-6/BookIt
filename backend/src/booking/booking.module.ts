@@ -3,10 +3,11 @@ import { BookingController } from './booking.controller';
 import { BookingService } from './booking.service';
 import { BookingRepository } from './booking.repository';
 import { BookingPolicyModule } from '../booking-policy/booking-policy.module';
+import { NotificationModule } from '../notification/notification.module';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [BookingPolicyModule, AuthModule],
+  imports: [BookingPolicyModule, NotificationModule, AuthModule],
   controllers: [BookingController],
   providers: [BookingService, BookingRepository],
   exports: [BookingService, BookingRepository],
