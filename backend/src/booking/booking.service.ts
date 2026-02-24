@@ -3,11 +3,13 @@ import {
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { BookingRepository } from './booking.repository';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
-import { BookingStatus } from '@prisma/client';
+import { BookingStatus, UserRole } from '@prisma/client';
+import type { User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RoomStateFactory } from '../rooms/state/room-state.factory';
 import { BookingPolicyChainService } from '../booking-policy/handlers/booking-policy-chain.service';
@@ -24,20 +26,19 @@ export class BookingService {
     return this.bookingRepository.findAll();
   }
 
-  async findById(id: string) {
-    const booking = await this.bookingRepository.findById(id);
-    if (!booking) {
-      throw new NotFoundException(`Booking with ID ${id} not found`);
-    }
-    return booking;
-  }
-
   async findByRoomId(roomId: string) {
     return this.bookingRepository.findByRoomId(roomId);
   }
 
-  async findByUserId(userId: string) {
+  async findByUserId(userId: string, requester: Pick<User, 'id' | 'role'>) {
+    this.assertSameUserOrAdmin(userId, requester);
     return this.bookingRepository.findByUserId(userId);
+  }
+
+  async findById(id: string, requester: Pick<User, 'id' | 'role'>) {
+    const booking = await this.getBookingOrThrow(id);
+    this.assertBookingOwnerOrAdmin(booking.bookedById, requester);
+    return booking;
   }
 
   async create(dto: CreateBookingDto, bookedById: string) {
@@ -103,20 +104,22 @@ export class BookingService {
     }
   }
 
-  async update(id: string, dto: UpdateBookingDto) {
-    await this.findById(id);
+  async update(id: string, dto: UpdateBookingDto, requester: Pick<User, 'id' | 'role'>) {
+    const existingBooking = await this.getBookingOrThrow(id);
+    this.assertBookingOwnerOrAdmin(existingBooking.bookedById, requester);
 
     if (dto.startAt || dto.endAt) {
-      const booking = await this.findById(id);
-      const startAt = dto.startAt ? new Date(dto.startAt) : booking.startAt;
-      const endAt = dto.endAt ? new Date(dto.endAt) : booking.endAt;
+      const startAt = dto.startAt
+        ? new Date(dto.startAt)
+        : existingBooking.startAt;
+      const endAt = dto.endAt ? new Date(dto.endAt) : existingBooking.endAt;
 
       if (startAt >= endAt) {
         throw new BadRequestException('Start time must be before end time');
       }
 
       const isAvailable = await this.bookingRepository.checkAvailability(
-        booking.roomId,
+        existingBooking.roomId,
         startAt,
         endAt,
       );
@@ -131,13 +134,48 @@ export class BookingService {
     });
   }
 
-  async cancel(id: string, reason?: string) {
-    const booking = await this.findById(id);
+  async cancel(id: string, reason: string | undefined, requester: Pick<User, 'id' | 'role'>) {
+    const booking = await this.getBookingOrThrow(id);
+    this.assertBookingOwnerOrAdmin(booking.bookedById, requester);
 
     if (booking.status === BookingStatus.CANCELLED) {
       throw new BadRequestException('Booking is already cancelled');
     }
 
     return this.bookingRepository.cancel(id, reason);
+  }
+
+  private async getBookingOrThrow(id: string) {
+    const booking = await this.bookingRepository.findById(id);
+    if (!booking) {
+      throw new NotFoundException(`Booking with ID ${id} not found`);
+    }
+    return booking;
+  }
+
+  private assertSameUserOrAdmin(
+    targetUserId: string,
+    requester: Pick<User, 'id' | 'role'>,
+  ) {
+    if (requester.role === UserRole.ADMIN || requester.id === targetUserId) {
+      return;
+    }
+
+    throw new ForbiddenException(
+      'You do not have permission to access these bookings',
+    );
+  }
+
+  private assertBookingOwnerOrAdmin(
+    bookingOwnerId: string,
+    requester: Pick<User, 'id' | 'role'>,
+  ) {
+    if (requester.role === UserRole.ADMIN || requester.id === bookingOwnerId) {
+      return;
+    }
+
+    throw new ForbiddenException(
+      'You do not have permission to access this booking',
+    );
   }
 }
