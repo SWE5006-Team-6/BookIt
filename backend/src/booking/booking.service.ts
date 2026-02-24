@@ -177,7 +177,7 @@ export class BookingService {
       return;
     }
 
-    const payload = this.toBookingTemplateData(booking);
+    const payload = this.mapBookingToTemplateData(booking);
 
     try {
       if (kind === 'confirmed') {
@@ -192,7 +192,7 @@ export class BookingService {
     }
   }
 
-  private toBookingTemplateData(
+  private mapBookingToTemplateData(
     booking: BookingNotificationSource,
   ): BookingNotificationData {
     const email = booking.bookedBy.email;

@@ -1,19 +1,25 @@
-import { Injectable } from '@nestjs/common';
-import { GmailProvider } from './providers/gmail.provider';
+import { Inject, Injectable } from '@nestjs/common';
 import { EmailPayload } from './types/email.types';
-import { bookingEmailTemplate } from './templates/booking-email.template';
 import { BookingNotificationData } from '../booking/types/booking-notification.types';
+import { EMAIL_PROVIDER } from './types/email-provider.types';
+import type { EmailProvider } from './types/email-provider.types';
+import { BookingConfirmedEmailTemplate } from './templates/booking-confirmed-email.template';
+import { BookingCancelledEmailTemplate } from './templates/booking-cancelled-email.template';
 
 @Injectable()
 export class NotificationService {
-  constructor(private readonly gmailProvider: GmailProvider) {}
+  constructor(
+    @Inject(EMAIL_PROVIDER) private readonly emailProvider: EmailProvider,
+    private readonly bookingConfirmedTemplate: BookingConfirmedEmailTemplate,
+    private readonly bookingCancelledTemplate: BookingCancelledEmailTemplate,
+  ) {}
 
   async sendEmail(payload: EmailPayload): Promise<void> {
-    await this.gmailProvider.send(payload);
+    await this.emailProvider.send(payload);
   }
 
   async sendBookingConfirmedEmail(payload: BookingNotificationData): Promise<void> {
-    const template = bookingEmailTemplate('confirmed', payload);
+    const template = this.bookingConfirmedTemplate.build(payload);
 
     await this.sendEmail({
       to: payload.email,
@@ -24,7 +30,7 @@ export class NotificationService {
   }
 
   async sendBookingCancelledEmail(payload: BookingNotificationData): Promise<void> {
-    const template = bookingEmailTemplate('cancelled', payload);
+    const template = this.bookingCancelledTemplate.build(payload);
 
     await this.sendEmail({
       to: payload.email,

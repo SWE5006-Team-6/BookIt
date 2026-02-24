@@ -2,10 +2,11 @@ import { Buffer } from 'node:buffer';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { google } from 'googleapis';
+import { EmailProvider } from '../types/email-provider.types';
 import { EmailPayload } from '../types/email.types';
 
 @Injectable()
-export class GmailProvider {
+export class GmailProvider implements EmailProvider {
   private readonly logger = new Logger(GmailProvider.name);
   private readonly gmailUser: string;
   private readonly gmail: ReturnType<typeof google.gmail>;
