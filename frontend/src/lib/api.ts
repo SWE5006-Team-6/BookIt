@@ -5,6 +5,9 @@ const API_URL =
     ? `${window.location.protocol}//${window.location.hostname}:5173`
     : 'http://localhost:5173');
 
+/** Base URL without trailing slash so joining with "/auth/login" never produces "//auth/login". */
+const API_BASE = API_URL.replace(/\/$/, '');
+
 interface ApiOptions {
   method?: string;
   body?: unknown;
@@ -25,7 +28,8 @@ export async function apiRequest<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const response = await fetch(`${API_BASE}${path}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
@@ -36,7 +40,7 @@ export async function apiRequest<T>(
     const text = await response.text();
     if (text.trimStart().startsWith('<!') || text.trimStart().startsWith('<')) {
       throw new Error(
-        `API returned HTML instead of JSON. Is the backend running at ${API_URL}? Check VITE_API_URL (or DEPLOY_API_URL when building for deploy).`,
+        `API returned HTML instead of JSON. Is the backend running at ${API_BASE}? Check VITE_API_URL (or DEPLOY_API_URL when building for deploy).`,
       );
     }
   }
