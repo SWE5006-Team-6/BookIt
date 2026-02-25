@@ -1,9 +1,9 @@
-// At build time: VITE_API_URL or DEPLOY_API_URL (in CI/CD). Fallback for deploy: same host, port 3000.
+// At build time: VITE_API_URL or DEPLOY_API_URL (in CI/CD). Fallback for deploy: same host, API on 5173.
 const API_URL =
   import.meta.env.VITE_API_URL ||
   (typeof window !== 'undefined'
-    ? `${window.location.protocol}//${window.location.hostname}:3000`
-    : 'http://localhost:3000');
+    ? `${window.location.protocol}//${window.location.hostname}:5173`
+    : 'http://localhost:5173');
 
 interface ApiOptions {
   method?: string;
