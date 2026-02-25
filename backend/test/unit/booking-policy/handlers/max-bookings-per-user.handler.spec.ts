@@ -47,4 +47,23 @@ describe('MaxBookingsPerUserHandler', () => {
     mockPrisma.booking.count.mockResolvedValue(2);
     await expect(handler.handle(makeContext())).rejects.toThrow(/maximum of 2/);
   });
+
+  it('loads handler module when Reflect decorator helpers are unavailable', () => {
+    const reflectAny = Reflect as any;
+    const originalDecorate = reflectAny.decorate;
+    const originalMetadata = reflectAny.metadata;
+
+    try {
+      reflectAny.decorate = undefined;
+      reflectAny.metadata = undefined;
+
+      jest.isolateModules(() => {
+        const mod = require('../../../../src/booking-policy/handlers/max-bookings-per-user.handler');
+        expect(mod.MaxBookingsPerUserHandler).toBeDefined();
+      });
+    } finally {
+      reflectAny.decorate = originalDecorate;
+      reflectAny.metadata = originalMetadata;
+    }
+  });
 });

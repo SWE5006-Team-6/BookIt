@@ -48,6 +48,26 @@ describe('MaxDurationHandler', () => {
     });
     await expect(handler.handle(ctx)).resolves.toBeUndefined();
   });
+
+  it('should format reject message as hours when max duration is whole hours', async () => {
+    handler.configure('120');
+    const now = new Date();
+    const ctx = makeContext({
+      startAt: new Date(now.getTime() + 60 * 60 * 1000),
+      endAt: new Date(now.getTime() + 4 * 60 * 60 * 1000),
+    });
+    await expect(handler.handle(ctx)).rejects.toThrow(/cannot exceed 2h/i);
+  });
+
+  it('should format reject message as hours and minutes when needed', async () => {
+    handler.configure('125');
+    const now = new Date();
+    const ctx = makeContext({
+      startAt: new Date(now.getTime() + 60 * 60 * 1000),
+      endAt: new Date(now.getTime() + 4 * 60 * 60 * 1000),
+    });
+    await expect(handler.handle(ctx)).rejects.toThrow(/cannot exceed 2h 5m/i);
+  });
 });
 
 describe('MinDurationHandler', () => {

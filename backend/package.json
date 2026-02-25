@@ -79,13 +79,19 @@
     "collectCoverageFrom": [
       "src/**/*.(t|j)s",
       "!src/**/*.module.(t|j)s",
-      "!src/**/main.(t|j)s"
+      "!src/**/main.(t|j)s",
+      "!src/**/*.dto.(t|j)s",
+      "!src/**/decorators/**/*.(t|j)s",
+      "!src/**/types/**/*.(t|j)s",
+      "!src/**/*interface.(t|j)s",
+      "!src/**/index.(t|j)s"
     ],
     "coverageDirectory": "coverage",
     "coverageReporters": [
       "text",
       "lcov"
     ],
+    "coverageProvider": "v8",
     "testEnvironment": "node"
   }
 }

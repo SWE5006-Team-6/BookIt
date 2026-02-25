@@ -8,7 +8,20 @@ import { BookingConfirmedEmailTemplate } from '../../../src/notification/templat
 import { BookingCancelledEmailTemplate } from '../../../src/notification/templates/booking-cancelled-email.template';
 
 describe('NotificationModule', () => {
-  it('should wire providers and alias token correctly', async () => {
+  async function compileWithConfig(configValues: Record<string, string>) {
+    return Test.createTestingModule({
+      imports: [
+        ConfigModule.forRoot({
+          isGlobal: true,
+          ignoreEnvFile: true,
+          load: [() => configValues],
+        }),
+        NotificationModule,
+      ],
+    }).compile();
+  }
+
+  it('wires providers and uses GmailProvider when all Gmail config is present', async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -38,5 +51,19 @@ describe('NotificationModule', () => {
     expect(confirmedTemplate).toBeDefined();
     expect(cancelledTemplate).toBeDefined();
     expect(emailProvider).toBeInstanceOf(GmailProvider);
+  });
+
+  it('throws when any Gmail config is missing', async () => {
+    await expect(
+      compileWithConfig({
+        GMAIL_USER: 'sender@example.com',
+      }),
+    ).rejects.toThrow(/Gmail configuration is incomplete/i);
+  });
+
+  it('throws when all Gmail config is missing', async () => {
+    await expect(
+      compileWithConfig({}),
+    ).rejects.toThrow(/Gmail configuration is incomplete/i);
   });
 });

@@ -11,27 +11,93 @@ describe('BookingController', () => {
   let controller: BookingController;
   let service: BookingService;
 
-  const mockBooking = {
-    id: '1',
-    roomId: 'room-1',
-    bookedById: 'user-1',
-    title: 'Team Meeting',
-    startAt: new Date('2026-02-10T10:00:00Z'),
-    endAt: new Date('2026-02-10T11:00:00Z'),
+  const mockBookings = [
+    {
+      id: '1',
+      roomId: 'room-1',
+      bookedById: 'user-1',
+      title: 'Team Meeting',
+      startAt: new Date('2026-02-10T10:00:00Z'),
+      endAt: new Date('2026-02-10T11:00:00Z'),
+      status: 'CONFIRMED',
+      room: {
+        id: 'room-1',
+        name: 'Conference Room A',
+        capacity: 10,
+        location: 'Floor 1',
+      },
+      bookedBy: {
+        id: 'user-1',
+        email: 'user1@example.com',
+        displayName: 'User One',
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: '2',
+      roomId: 'room-1',
+      bookedById: 'user-2',
+      title: 'Product Sync',
+      startAt: new Date('2026-02-10T12:00:00Z'),
+      endAt: new Date('2026-02-10T13:00:00Z'),
+      status: 'CONFIRMED',
+      room: {
+        id: 'room-1',
+        name: 'Conference Room A',
+        capacity: 10,
+        location: 'Floor 1',
+      },
+      bookedBy: {
+        id: 'user-2',
+        email: 'user2@example.com',
+        displayName: 'User Two',
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: '3',
+      roomId: 'room-2',
+      bookedById: 'user-1',
+      title: 'Design Review',
+      startAt: new Date('2026-02-11T09:00:00Z'),
+      endAt: new Date('2026-02-11T10:00:00Z'),
+      status: 'CONFIRMED',
+      room: {
+        id: 'room-2',
+        name: 'Conference Room B',
+        capacity: 8,
+        location: 'Floor 2',
+      },
+      bookedBy: {
+        id: 'user-1',
+        email: 'user1@example.com',
+        displayName: 'User One',
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  ];
+  const room1Bookings = [mockBookings[0], mockBookings[1]];
+  const user1Bookings = [mockBookings[0], mockBookings[2]];
+  const createResult = {
+    ...mockBookings[0],
+    id: '4',
+    title: 'New Booking',
+    startAt: new Date('2026-02-12T10:00:00Z'),
+    endAt: new Date('2026-02-12T11:00:00Z'),
+  };
+  const updateResult = {
+    ...mockBookings[0],
+    title: 'Updated Team Meeting',
     status: 'CONFIRMED',
-    room: {
-      id: 'room-1',
-      name: 'Conference Room A',
-      capacity: 10,
-      location: 'Floor 1',
-    },
-    bookedBy: {
-      id: 'user-1',
-      email: 'test@example.com',
-      displayName: 'Test User',
-    },
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    updatedAt: new Date('2026-02-12T12:00:00Z'),
+  };
+  const cancelResult = {
+    ...mockBookings[0],
+    status: 'CANCELLED',
+    cancelReason: 'Meeting cancelled',
   };
 
   const mockUser = {
@@ -40,13 +106,13 @@ describe('BookingController', () => {
   } as any;
 
   const mockBookingService = {
-    findAll: jest.fn().mockResolvedValue([mockBooking]),
-    findById: jest.fn().mockResolvedValue(mockBooking),
-    findByRoomId: jest.fn().mockResolvedValue([mockBooking]),
-    findByUserId: jest.fn().mockResolvedValue([mockBooking]),
-    create: jest.fn().mockResolvedValue(mockBooking),
-    update: jest.fn().mockResolvedValue(mockBooking),
-    cancel: jest.fn().mockResolvedValue(mockBooking),
+    findAll: jest.fn().mockResolvedValue(mockBookings),
+    findById: jest.fn().mockResolvedValue(mockBookings[1]),
+    findByRoomId: jest.fn().mockResolvedValue(room1Bookings),
+    findByUserId: jest.fn().mockResolvedValue(user1Bookings),
+    create: jest.fn().mockResolvedValue(createResult),
+    update: jest.fn().mockResolvedValue(updateResult),
+    cancel: jest.fn().mockResolvedValue(cancelResult),
   };
 
   beforeEach(async () => {
@@ -80,7 +146,7 @@ describe('BookingController', () => {
   describe('findAll', () => {
     it('should return an array of bookings', async () => {
       const result = await controller.findAll();
-      expect(result).toEqual([mockBooking]);
+      expect(result).toEqual(mockBookings);
       expect(service.findAll).toHaveBeenCalled();
     });
   });
@@ -88,7 +154,7 @@ describe('BookingController', () => {
   describe('findByRoomId', () => {
     it('should return bookings for a room', async () => {
       const result = await controller.findByRoomId('room-1');
-      expect(result).toEqual([mockBooking]);
+      expect(result).toEqual(room1Bookings);
       expect(service.findByRoomId).toHaveBeenCalledWith('room-1');
     });
   });
@@ -96,16 +162,16 @@ describe('BookingController', () => {
   describe('findByUserId', () => {
     it('should return bookings for a user', async () => {
       const result = await controller.findByUserId('user-1', mockUser);
-      expect(result).toEqual([mockBooking]);
+      expect(result).toEqual(user1Bookings);
       expect(service.findByUserId).toHaveBeenCalledWith('user-1', mockUser);
     });
   });
 
   describe('findById', () => {
     it('should return a booking by id', async () => {
-      const result = await controller.findById('1', mockUser);
-      expect(result).toEqual(mockBooking);
-      expect(service.findById).toHaveBeenCalledWith('1', mockUser);
+      const result = await controller.findById('2', mockUser);
+      expect(result).toEqual(mockBookings[1]);
+      expect(service.findById).toHaveBeenCalledWith('2', mockUser);
     });
   });
 
@@ -119,7 +185,7 @@ describe('BookingController', () => {
 
     it('should create a new booking', async () => {
       const result = await controller.create(createDto, 'user-1');
-      expect(result).toEqual(mockBooking);
+      expect(result).toEqual(createResult);
       expect(service.create).toHaveBeenCalledWith(createDto, 'user-1');
     });
   });
@@ -131,7 +197,7 @@ describe('BookingController', () => {
 
     it('should update a booking', async () => {
       const result = await controller.update('1', updateDto, mockUser);
-      expect(result).toEqual(mockBooking);
+      expect(result).toEqual(updateResult);
       expect(service.update).toHaveBeenCalledWith('1', updateDto, mockUser);
     });
   });
@@ -143,7 +209,7 @@ describe('BookingController', () => {
         { reason: 'Meeting cancelled' },
         mockUser,
       );
-      expect(result).toEqual(mockBooking);
+      expect(result).toEqual(cancelResult);
       expect(service.cancel).toHaveBeenCalledWith(
         '1',
         'Meeting cancelled',
@@ -152,9 +218,46 @@ describe('BookingController', () => {
     });
 
     it('should cancel a booking without reason', async () => {
+      const cancelWithoutReasonResult = {
+        ...cancelResult,
+        cancelReason: undefined,
+      };
+      mockBookingService.cancel.mockResolvedValueOnce(cancelWithoutReasonResult);
+
       const result = await controller.cancel('1', {}, mockUser);
-      expect(result).toEqual(mockBooking);
+      expect(result).toEqual(cancelWithoutReasonResult);
       expect(service.cancel).toHaveBeenCalledWith('1', undefined, mockUser);
     });
+
+    it('should use default body when cancel body is omitted', async () => {
+      const cancelWithoutReasonResult = {
+        ...cancelResult,
+        cancelReason: undefined,
+      };
+      mockBookingService.cancel.mockResolvedValueOnce(cancelWithoutReasonResult);
+
+      const result = await controller.cancel('1', undefined as any, mockUser);
+      expect(result).toEqual(cancelWithoutReasonResult);
+      expect(service.cancel).toHaveBeenCalledWith('1', undefined, mockUser);
+    });
+  });
+
+  it('loads controller module when Reflect decorator helpers are unavailable', () => {
+    const reflectAny = Reflect as any;
+    const originalDecorate = reflectAny.decorate;
+    const originalMetadata = reflectAny.metadata;
+
+    try {
+      reflectAny.decorate = undefined;
+      reflectAny.metadata = undefined;
+
+      jest.isolateModules(() => {
+        const mod = require('../../../src/booking/booking.controller');
+        expect(mod.BookingController).toBeDefined();
+      });
+    } finally {
+      reflectAny.decorate = originalDecorate;
+      reflectAny.metadata = originalMetadata;
+    }
   });
 });

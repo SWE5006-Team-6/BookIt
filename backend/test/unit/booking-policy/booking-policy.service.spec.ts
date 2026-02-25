@@ -34,6 +34,17 @@ describe('BookingPolicyService', () => {
     });
   });
 
+  describe('findActive', () => {
+    it('should return active policies', async () => {
+      const active = [{ key: 'max_duration_minutes', value: '120', isActive: true }];
+      mockRepository.findActive.mockResolvedValue(active);
+
+      const result = await service.findActive();
+      expect(result).toEqual(active);
+      expect(mockRepository.findActive).toHaveBeenCalled();
+    });
+  });
+
   describe('findByKey', () => {
     it('should return a policy by key', async () => {
       const policy = { key: 'max_duration_minutes', value: '120' };
@@ -128,6 +139,18 @@ describe('BookingPolicyService', () => {
       await service.seedDefaults();
 
       expect(mockRepository.upsert).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('onModuleInit', () => {
+    it('should call seedDefaults', async () => {
+      const spy = jest
+        .spyOn(service, 'seedDefaults')
+        .mockResolvedValue(undefined as never);
+
+      await service.onModuleInit();
+
+      expect(spy).toHaveBeenCalledTimes(1);
     });
   });
 });
