@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { apiRequest } from '../../../src/lib/api.ts';
+import { apiRequest, getApiUrl } from '../../../src/lib/api.ts';
 
 describe('apiRequest', () => {
   const originalFetch = globalThis.fetch;
@@ -15,6 +15,17 @@ describe('apiRequest', () => {
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    vi.unstubAllEnvs();
+  });
+
+  it('should use VITE_API_URL when configured', () => {
+    vi.stubEnv('VITE_API_URL', 'http://api.example.test:9999');
+    expect(getApiUrl()).toBe('http://api.example.test:9999');
+  });
+
+  it('should fallback to current host with port 5173 when VITE_API_URL is empty', () => {
+    vi.stubEnv('VITE_API_URL', '');
+    expect(getApiUrl()).toBe('http://localhost:5173');
   });
 
   it('should make a GET request by default', async () => {
@@ -28,7 +39,7 @@ describe('apiRequest', () => {
     const result = await apiRequest('/auth/me');
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:5173/auth/me',
+      expect.stringMatching(/\/auth\/me$/),
       {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -49,7 +60,7 @@ describe('apiRequest', () => {
     await apiRequest('/auth/login', { method: 'POST', body });
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:5173/auth/login',
+      expect.stringMatching(/\/auth\/login$/),
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -100,6 +111,56 @@ describe('apiRequest', () => {
 
     await expect(apiRequest('/auth/register', { method: 'POST', body: {} })).rejects.toThrow(
       'email must be valid, password too short',
+    );
+  });
+
+  it('should throw a helpful error when backend returns HTML', async () => {
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      headers: mockHeaders('text/html'),
+      text: () => Promise.resolve('<!doctype html><html></html>'),
+      json: () => Promise.resolve({}),
+    });
+
+    await expect(apiRequest('/auth/me')).rejects.toThrow(
+      /API returned HTML instead of JSON/i,
+    );
+  });
+
+  it('should treat non-doctype html as html and throw', async () => {
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      headers: mockHeaders('text/plain'),
+      text: () => Promise.resolve('   <html>oops</html>'),
+      json: () => Promise.resolve({}),
+    });
+
+    await expect(apiRequest('/auth/me')).rejects.toThrow(
+      /API returned HTML instead of JSON/i,
+    );
+  });
+
+  it('should allow non-json non-html payloads when response is ok', async () => {
+    const payload = { ok: true };
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      headers: { get: () => null },
+      text: () => Promise.resolve('plain-text-response'),
+      json: () => Promise.resolve(payload),
+    });
+
+    await expect(apiRequest('/health')).resolves.toEqual(payload);
+  });
+
+  it('should fallback to default error message when response has no message', async () => {
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      headers: mockHeaders(),
+      json: () => Promise.resolve({}),
+    });
+
+    await expect(apiRequest('/auth/login', { method: 'POST', body: {} })).rejects.toThrow(
+      'Something went wrong',
     );
   });
 });

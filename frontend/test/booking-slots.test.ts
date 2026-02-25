@@ -3,6 +3,8 @@ import type { Booking } from '../src/types/room.types';
 import {
   buildEndSlotOptions,
   buildStartSlotOptions,
+  getInitialBookingDate,
+  getMaxDateInputValue,
   DEFAULT_BOOKING_UI_CONSTRAINTS,
 } from '../src/lib/booking-slots';
 
@@ -117,5 +119,107 @@ describe('booking-slots', () => {
     const enabledSlots = slots.filter((slot) => !slot.disabled).map((slot) => slot.time);
 
     expect(enabledSlots).toEqual(['18:00']);
+  });
+
+  it('returns empty slot lists when selected date or start time is missing', () => {
+    expect(
+      buildStartSlotOptions({
+        selectedDate: '',
+        bookings: [],
+        constraints: DEFAULT_BOOKING_UI_CONSTRAINTS,
+      }),
+    ).toEqual([]);
+
+    expect(
+      buildEndSlotOptions({
+        selectedDate: '2099-01-01',
+        startTime: '',
+        bookings: [],
+        constraints: DEFAULT_BOOKING_UI_CONSTRAINTS,
+      }),
+    ).toEqual([]);
+  });
+
+  it('disables start slots when max duration is less than minimum duration', () => {
+    const slots = buildStartSlotOptions({
+      selectedDate: '2099-01-01',
+      bookings: [],
+      constraints: {
+        ...DEFAULT_BOOKING_UI_CONSTRAINTS,
+        minDurationMinutes: 90,
+        maxDurationMinutes: 30,
+      },
+      now: new Date('2098-12-31T00:00:00'),
+    });
+
+    expect(slots.every((slot) => slot.disabled)).toBe(true);
+    expect(slots[0]?.reason).toBe('No valid duration available');
+  });
+
+  it('applies max advance date and initial booking date helpers', () => {
+    const now = new Date('2099-01-01T08:00:00');
+    expect(getInitialBookingDate(DEFAULT_BOOKING_UI_CONSTRAINTS, now)).toBe('2099-01-01');
+    expect(getMaxDateInputValue(DEFAULT_BOOKING_UI_CONSTRAINTS, now)).toBe('2099-01-15');
+    expect(
+      getMaxDateInputValue({ ...DEFAULT_BOOKING_UI_CONSTRAINTS, maxAdvanceDays: null }, now),
+    ).toBeUndefined();
+  });
+
+  it('ignores invalid booking intervals and still allows end slot selection', () => {
+    const slots = buildEndSlotOptions({
+      selectedDate: '2099-01-01',
+      startTime: '09:00',
+      bookings: [makeBooking('bad-date', 'still-bad')],
+      constraints: DEFAULT_BOOKING_UI_CONSTRAINTS,
+      now: new Date('2098-12-31T00:00:00'),
+    });
+
+    expect(slots.find((s) => s.time === '09:30')?.disabled).toBe(false);
+  });
+
+  it('disables starts beyond max advance window', () => {
+    const slots = buildStartSlotOptions({
+      selectedDate: '2099-01-20',
+      bookings: [],
+      constraints: {
+        ...DEFAULT_BOOKING_UI_CONSTRAINTS,
+        maxAdvanceDays: 1,
+      },
+      now: new Date('2099-01-01T08:00:00'),
+    });
+
+    expect(slots.every((slot) => slot.disabled)).toBe(true);
+    expect(slots[0]?.reason).toBe('Beyond 1 day advance window');
+  });
+
+  it('marks short end duration as invalid when start time is off-grid', () => {
+    const slots = buildEndSlotOptions({
+      selectedDate: '2099-01-01',
+      startTime: '09:10',
+      bookings: [],
+      constraints: {
+        ...DEFAULT_BOOKING_UI_CONSTRAINTS,
+        minDurationMinutes: 30,
+      },
+      now: new Date('2098-12-31T00:00:00'),
+    });
+
+    expect(slots.find((s) => s.time === '09:30')?.reason).toBe('Minimum duration is 30 min');
+  });
+
+  it('supports unlimited advance and duration constraints for start slots', () => {
+    const slots = buildStartSlotOptions({
+      selectedDate: '2099-01-01',
+      bookings: [],
+      constraints: {
+        ...DEFAULT_BOOKING_UI_CONSTRAINTS,
+        maxAdvanceDays: null,
+        maxDurationMinutes: null,
+      },
+      now: new Date('2098-12-31T00:00:00'),
+    });
+
+    expect(slots[0]?.disabled).toBe(false);
+    expect(slots[0]?.reason).toBeUndefined();
   });
 });

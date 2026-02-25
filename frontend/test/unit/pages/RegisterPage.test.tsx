@@ -118,4 +118,19 @@ describe('RegisterPage', () => {
       ).toBeInTheDocument();
     });
   });
+
+  it('should show fallback error when rejection is not an Error instance', async () => {
+    mockRegister.mockRejectedValue('unknown issue');
+    const user = userEvent.setup();
+
+    renderWithProviders(<RegisterPage />);
+
+    await user.type(screen.getByPlaceholderText('you@ncs.com.sg'), 'user@ncs.com.sg');
+    await user.type(screen.getByPlaceholderText('Minimum 8 characters'), 'password123');
+    await user.click(screen.getByRole('button', { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Registration failed')).toBeInTheDocument();
+    });
+  });
 });

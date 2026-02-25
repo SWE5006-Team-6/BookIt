@@ -21,34 +21,29 @@ export function DashboardPage() {
   const { user, token } = useAuth();
   const navigate = useNavigate();
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [bookingCount, setBookingCount] = useState<number | null>(null);
+  const [bookingCount, setBookingCount] = useState(0);
   const [statsLoading, setStatsLoading] = useState(true);
 
   const isAdmin = user?.role === 'ADMIN';
 
   useEffect(() => {
     const loadStats = async () => {
-      try {
-        const roomsData = await apiRequest<Room[]>('/rooms', {
-          token: token ?? undefined,
-        }).catch(() => []);
-        setRooms(Array.isArray(roomsData) ? roomsData : []);
+      const roomsData = await apiRequest<Room[]>(
+        '/rooms',
+        token ? { token } : {},
+      ).catch(() => []);
+      setRooms(roomsData);
 
-        if (user?.id && token) {
-          const bookings = await apiRequest<BookingSummary[]>(
-            `/bookings/user/${user.id}`,
-            { token: token ?? undefined },
-          ).catch(() => []);
-          setBookingCount(Array.isArray(bookings) ? bookings.length : 0);
-        } else {
-          setBookingCount(0);
-        }
-      } catch {
-        setRooms([]);
+      if (user?.id && token) {
+        const bookings = await apiRequest<BookingSummary[]>(
+          `/bookings/user/${user.id}`,
+          { token },
+        ).catch(() => []);
+        setBookingCount(bookings.length);
+      } else {
         setBookingCount(0);
-      } finally {
-        setStatsLoading(false);
       }
+      setStatsLoading(false);
     };
     loadStats();
   }, [user?.id, token]);
@@ -147,7 +142,7 @@ export function DashboardPage() {
                 {statsLoading ? (
                   <Spinner size="sm" color="#4F46E5" />
                 ) : (
-                  <Heading size="md" color="gray.800">{bookingCount ?? 0}</Heading>
+                  <Heading size="md" color="gray.800">{bookingCount}</Heading>
                 )}
                 <Box>
                   <Button

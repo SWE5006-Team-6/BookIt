@@ -1,9 +1,10 @@
-// At build time: VITE_API_URL or DEPLOY_API_URL (in CI/CD). Fallback for deploy: same host, API on 5173.
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  (typeof window !== 'undefined'
-    ? `${window.location.protocol}//${window.location.hostname}:5173`
-    : 'http://localhost:5173');
+// At build time: VITE_API_URL or fallback to same host on port 5173.
+export function getApiUrl() {
+  return (
+    import.meta.env.VITE_API_URL ||
+    `${window.location.protocol}//${window.location.hostname}:5173`
+  );
+}
 
 interface ApiOptions {
   method?: string;
@@ -15,6 +16,7 @@ export async function apiRequest<T>(
   endpoint: string,
   options: ApiOptions = {},
 ): Promise<T> {
+  const API_URL = getApiUrl();
   const { method = 'GET', body, token } = options;
 
   const headers: Record<string, string> = {
