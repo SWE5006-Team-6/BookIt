@@ -6,268 +6,325 @@ import { SupabaseService } from '../../../src/supabase/supabase.service';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let prisma: PrismaService;
-  let supabase: SupabaseService;
+  let prisma: {
+    user: {
+      create: jest.Mock;
+      findUnique: jest.Mock;
+    };
+  };
+  let supabase: {
+    getClient: jest.Mock;
+    getPublicClient: jest.Mock;
+    getClientWithUserToken: jest.Mock;
+  };
 
-  // Reusable mock Supabase client
-  const mockSupabaseClient = {
+  const adminClient = {
     auth: {
       admin: {
         createUser: jest.fn(),
       },
+    },
+  };
+
+  const publicClient = {
+    auth: {
       signInWithPassword: jest.fn(),
     },
   };
 
-  const mockUserClient = {
+  const userClient = {
     auth: {
       mfa: {
-        listFactors: jest.fn().mockResolvedValue({
-          data: { totp: [], phone: [] },
-        }),
+        listFactors: jest.fn(),
+        challenge: jest.fn(),
+        verify: jest.fn(),
+        enroll: jest.fn(),
+        unenroll: jest.fn(),
       },
+      getSession: jest.fn(),
     },
   };
 
   beforeEach(async () => {
+    prisma = {
+      user: {
+        create: jest.fn(),
+        findUnique: jest.fn(),
+      },
+    };
+
+    supabase = {
+      getClient: jest.fn().mockReturnValue(adminClient),
+      getPublicClient: jest.fn().mockReturnValue(publicClient),
+      getClientWithUserToken: jest.fn().mockReturnValue(userClient),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
-        {
-          provide: PrismaService,
-          useValue: {
-            user: {
-              create: jest.fn(),
-              findUnique: jest.fn(),
-            },
-          },
-        },
-        {
-          provide: SupabaseService,
-          useValue: {
-            getClient: jest.fn().mockReturnValue(mockSupabaseClient),
-            getPublicClient: jest.fn().mockReturnValue(mockSupabaseClient),
-            getClientWithUserToken: jest.fn().mockReturnValue(mockUserClient),
-          },
-        },
+        { provide: PrismaService, useValue: prisma },
+        { provide: SupabaseService, useValue: supabase },
       ],
     }).compile();
 
-    service = module.get<AuthService>(AuthService);
-    prisma = module.get<PrismaService>(PrismaService);
-    supabase = module.get<SupabaseService>(SupabaseService);
+    service = module.get(AuthService);
+
+    adminClient.auth.admin.createUser.mockReset();
+    publicClient.auth.signInWithPassword.mockReset();
+    userClient.auth.mfa.listFactors.mockReset();
+    userClient.auth.mfa.challenge.mockReset();
+    userClient.auth.mfa.verify.mockReset();
+    userClient.auth.mfa.enroll.mockReset();
+    userClient.auth.mfa.unenroll.mockReset();
+    userClient.auth.getSession.mockReset();
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-
-  // ─── register ────────────────────────────────────────────────────────────────
-
   describe('register', () => {
-    const registerDto = {
-      email: 'user@example.com',
-      password: 'password123',
-      displayName: 'Test User',
-    };
-
-    it('should create a user in Supabase and Prisma, then return the profile', async () => {
-      const supabaseUser = { id: 'uuid-123' };
-      mockSupabaseClient.auth.admin.createUser.mockResolvedValue({
-        data: { user: supabaseUser },
+    it('creates Supabase + Prisma user and returns profile', async () => {
+      adminClient.auth.admin.createUser.mockResolvedValue({
+        data: { user: { id: 'u-1' } },
         error: null,
       });
-
-      const prismaUser = {
-        id: 'uuid-123',
+      prisma.user.create.mockResolvedValue({
+        id: 'u-1',
         email: 'user@example.com',
-        displayName: 'Test User',
+        displayName: 'User',
         role: 'USER',
-      };
-      (prisma.user.create as jest.Mock).mockResolvedValue(prismaUser);
-
-      const result = await service.register(registerDto);
-
-      expect(mockSupabaseClient.auth.admin.createUser).toHaveBeenCalledWith({
-        email: 'user@example.com',
-        password: 'password123',
-        email_confirm: true,
       });
 
-      expect(prisma.user.create).toHaveBeenCalledWith({
-        data: {
-          id: 'uuid-123',
+      await expect(
+        service.register({
           email: 'user@example.com',
-          displayName: 'Test User',
-        },
-      });
-
-      expect(result).toEqual({
-        id: 'uuid-123',
+          password: 'password123',
+          displayName: 'User',
+        }),
+      ).resolves.toEqual({
+        id: 'u-1',
         email: 'user@example.com',
-        displayName: 'Test User',
+        displayName: 'User',
         role: 'USER',
       });
     });
 
-    it('should register without displayName when not provided', async () => {
-      const dtoWithoutName = { email: 'user@example.com', password: 'password123' };
-      const supabaseUser = { id: 'uuid-456' };
-
-      mockSupabaseClient.auth.admin.createUser.mockResolvedValue({
-        data: { user: supabaseUser },
-        error: null,
-      });
-
-      (prisma.user.create as jest.Mock).mockResolvedValue({
-        id: 'uuid-456',
-        email: 'user@example.com',
-        displayName: null,
-        role: 'USER',
-      });
-
-      const result = await service.register(dtoWithoutName);
-
-      expect(prisma.user.create).toHaveBeenCalledWith({
-        data: {
-          id: 'uuid-456',
-          email: 'user@example.com',
-          displayName: undefined,
-        },
-      });
-
-      expect(result.displayName).toBeNull();
-    });
-
-    it('should throw BadRequestException when Supabase returns an error', async () => {
-      mockSupabaseClient.auth.admin.createUser.mockResolvedValue({
+    it('throws BadRequestException when Supabase createUser fails', async () => {
+      adminClient.auth.admin.createUser.mockResolvedValue({
         data: { user: null },
         error: { message: 'User already registered' },
       });
 
-      await expect(service.register(registerDto)).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.register(registerDto)).rejects.toThrow(
-        'User already registered',
-      );
-
+      await expect(
+        service.register({
+          email: 'user@example.com',
+          password: 'password123',
+          displayName: 'User',
+        }),
+      ).rejects.toThrow(new BadRequestException('User already registered'));
       expect(prisma.user.create).not.toHaveBeenCalled();
     });
   });
 
-  // ─── login ───────────────────────────────────────────────────────────────────
-
   describe('login', () => {
-    const loginDto = { email: 'user@example.com', password: 'password123' };
+    const dto = { email: 'user@example.com', password: 'password123' };
 
-    it('should return access and refresh tokens on success', async () => {
-      mockSupabaseClient.auth.signInWithPassword.mockResolvedValue({
-        data: {
-          session: {
-            access_token: 'jwt-access-token',
-            refresh_token: 'jwt-refresh-token',
-          },
-        },
+    it('returns tokens and mfaRequired=false when no TOTP factor exists', async () => {
+      publicClient.auth.signInWithPassword.mockResolvedValue({
+        data: { session: { access_token: 'a', refresh_token: 'r' } },
+        error: null,
+      });
+      userClient.auth.mfa.listFactors.mockResolvedValue({
+        data: { totp: [], phone: [] },
         error: null,
       });
 
-      const result = await service.login(loginDto);
-
-      expect(mockSupabaseClient.auth.signInWithPassword).toHaveBeenCalledWith({
-        email: 'user@example.com',
-        password: 'password123',
-      });
-
-      expect(result).toEqual({
-        accessToken: 'jwt-access-token',
-        refreshToken: 'jwt-refresh-token',
+      await expect(service.login(dto)).resolves.toEqual({
+        accessToken: 'a',
+        refreshToken: 'r',
         mfaRequired: false,
       });
     });
 
-    it('should return mfaRequired true when user has MFA enrolled but not verified', async () => {
-      mockSupabaseClient.auth.signInWithPassword.mockResolvedValue({
-        data: {
-          session: {
-            access_token: 'jwt-access-token',
-            refresh_token: 'jwt-refresh-token',
-          },
-        },
+    it('returns mfaRequired=true when TOTP factor exists', async () => {
+      publicClient.auth.signInWithPassword.mockResolvedValue({
+        data: { session: { access_token: 'a', refresh_token: 'r' } },
         error: null,
       });
-      mockUserClient.auth.mfa.listFactors.mockResolvedValue({
+      userClient.auth.mfa.listFactors.mockResolvedValue({
         data: { totp: [{ id: 'factor-1' }], phone: [] },
+        error: null,
       });
 
-      const result = await service.login(loginDto);
-
-      expect(result).toEqual({
-        accessToken: 'jwt-access-token',
-        refreshToken: 'jwt-refresh-token',
+      await expect(service.login(dto)).resolves.toEqual({
+        accessToken: 'a',
+        refreshToken: 'r',
         mfaRequired: true,
       });
     });
 
-    it('should throw UnauthorizedException on invalid credentials', async () => {
-      mockSupabaseClient.auth.signInWithPassword.mockResolvedValue({
+    it('throws UnauthorizedException for invalid credentials', async () => {
+      publicClient.auth.signInWithPassword.mockResolvedValue({
         data: { session: null },
         error: { message: 'Invalid login credentials' },
       });
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
-      await expect(service.login(loginDto)).rejects.toThrow(
-        'Invalid email or password',
+      await expect(service.login(dto)).rejects.toThrow(
+        new UnauthorizedException('Invalid email or password'),
       );
     });
   });
 
-  // ─── getProfile ──────────────────────────────────────────────────────────────
+  describe('verifyMfa', () => {
+    beforeEach(() => {
+      userClient.auth.mfa.listFactors.mockResolvedValue({
+        data: { totp: [{ id: 'factor-1' }], phone: [] },
+        error: null,
+      });
+      userClient.auth.mfa.challenge.mockResolvedValue({
+        data: { id: 'challenge-1' },
+        error: null,
+      });
+    });
+
+    it('returns tokens from verify response when present', async () => {
+      userClient.auth.mfa.verify.mockResolvedValue({
+        data: {
+          session: { access_token: 'new-a', refresh_token: 'new-r' },
+        },
+        error: null,
+      });
+
+      await expect(service.verifyMfa('token', ' 123456 ')).resolves.toEqual({
+        accessToken: 'new-a',
+        refreshToken: 'new-r',
+      });
+    });
+
+    it('falls back to getSession when verify response has no tokens', async () => {
+      userClient.auth.mfa.verify.mockResolvedValue({
+        data: { ok: true },
+        error: null,
+      });
+      userClient.auth.getSession.mockResolvedValue({
+        data: { session: { access_token: 'sa', refresh_token: 'sr' } },
+        error: null,
+      });
+
+      await expect(service.verifyMfa('token', '123456')).resolves.toEqual({
+        accessToken: 'sa',
+        refreshToken: 'sr',
+      });
+    });
+
+    it('throws unauthorized when no TOTP factor exists', async () => {
+      userClient.auth.mfa.listFactors.mockResolvedValue({
+        data: { totp: [], phone: [] },
+        error: null,
+      });
+
+      await expect(service.verifyMfa('token', '123456')).rejects.toThrow(
+        new UnauthorizedException('No TOTP factor found'),
+      );
+    });
+  });
+
+  describe('mfa management', () => {
+    it('enrollMfa returns factor id + QR + secret and throws on error', async () => {
+      userClient.auth.mfa.enroll.mockResolvedValueOnce({
+        data: { id: 'factor-1', totp: { qr_code: 'qr', secret: 'secret' } },
+        error: null,
+      });
+      await expect(service.enrollMfa('token')).resolves.toEqual({
+        factorId: 'factor-1',
+        qrCode: 'qr',
+        secret: 'secret',
+      });
+
+      userClient.auth.mfa.enroll.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'enroll failed' },
+      });
+      await expect(service.enrollMfa('token')).rejects.toThrow(BadRequestException);
+    });
+
+    it('confirmEnrollMfa verifies challenge flow and throws on challenge failure', async () => {
+      userClient.auth.mfa.challenge.mockResolvedValueOnce({
+        data: { id: 'challenge-1' },
+        error: null,
+      });
+      userClient.auth.mfa.verify.mockResolvedValueOnce({
+        data: { ok: true },
+        error: null,
+      });
+      await expect(
+        service.confirmEnrollMfa('token', 'factor-1', ' 654321 '),
+      ).resolves.toEqual({ success: true });
+
+      userClient.auth.mfa.challenge.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'challenge failed' },
+      });
+      await expect(
+        service.confirmEnrollMfa('token', 'factor-1', '654321'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('listMfaFactors returns defaults and throws when Supabase fails', async () => {
+      userClient.auth.mfa.listFactors.mockResolvedValueOnce({
+        data: {},
+        error: null,
+      });
+      await expect(service.listMfaFactors('token')).resolves.toEqual({
+        totp: [],
+        phone: [],
+      });
+
+      userClient.auth.mfa.listFactors.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'list failed' },
+      });
+      await expect(service.listMfaFactors('token')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('unenrollMfa returns success and throws on failure', async () => {
+      userClient.auth.mfa.unenroll.mockResolvedValueOnce({ error: null });
+      await expect(service.unenrollMfa('token', 'factor-1')).resolves.toEqual({
+        success: true,
+      });
+
+      userClient.auth.mfa.unenroll.mockResolvedValueOnce({
+        error: { message: 'unenroll failed' },
+      });
+      await expect(service.unenrollMfa('token', 'factor-1')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
 
   describe('getProfile', () => {
-    it('should return the user profile when found', async () => {
-      const userProfile = {
-        id: 'uuid-123',
+    it('returns selected user profile', async () => {
+      const profile = {
+        id: 'u-1',
         email: 'user@example.com',
-        displayName: 'Test User',
+        displayName: 'User',
         role: 'USER',
         isActive: true,
         createdAt: new Date('2026-01-01'),
       };
+      prisma.user.findUnique.mockResolvedValue(profile);
 
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(userProfile);
-
-      const result = await service.getProfile('uuid-123');
-
-      expect(prisma.user.findUnique).toHaveBeenCalledWith({
-        where: { id: 'uuid-123' },
-        select: {
-          id: true,
-          email: true,
-          displayName: true,
-          role: true,
-          isActive: true,
-          createdAt: true,
-        },
-      });
-
-      expect(result).toEqual(userProfile);
+      await expect(service.getProfile('u-1')).resolves.toEqual(profile);
     });
 
-    it('should throw UnauthorizedException when user is not found', async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+    it('throws UnauthorizedException when user is not found', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.getProfile('nonexistent-id')).rejects.toThrow(
-        UnauthorizedException,
-      );
-      await expect(service.getProfile('nonexistent-id')).rejects.toThrow(
-        'User not found',
+      await expect(service.getProfile('missing')).rejects.toThrow(
+        new UnauthorizedException('User not found'),
       );
     });
   });

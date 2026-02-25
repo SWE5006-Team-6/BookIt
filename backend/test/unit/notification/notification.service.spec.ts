@@ -11,14 +11,32 @@ describe('NotificationService', () => {
   let confirmedTemplate: jest.Mocked<BookingConfirmedEmailTemplate>;
   let cancelledTemplate: jest.Mocked<BookingCancelledEmailTemplate>;
 
-  const payload: BookingNotificationData = {
+  const confirmedPayload: BookingNotificationData = {
     email: 'user@example.com',
     name: 'User',
     roomName: 'Room A',
     title: 'Weekly sync',
     startAt: new Date('2026-02-24T10:00:00.000Z'),
     endAt: new Date('2026-02-24T11:00:00.000Z'),
+    cancelReason: undefined,
+  };
+
+  const cancelledPayload: BookingNotificationData = {
+    ...confirmedPayload,
+    title: 'Weekly sync (cancelled)',
     cancelReason: 'Schedule conflict',
+  };
+
+  const confirmedTemplateResult = {
+    subject: 'Booking Confirmed',
+    text: 'confirmed text',
+    html: '<p>confirmed</p>',
+  };
+
+  const cancelledTemplateResult = {
+    subject: 'Booking Cancelled',
+    text: 'cancelled text',
+    html: '<p>cancelled</p>',
   };
 
   beforeEach(() => {
@@ -27,19 +45,11 @@ describe('NotificationService', () => {
     };
 
     confirmedTemplate = {
-      build: jest.fn().mockReturnValue({
-        subject: 'Booking Confirmed',
-        text: 'confirmed text',
-        html: '<p>confirmed</p>',
-      }),
+      build: jest.fn().mockReturnValue(confirmedTemplateResult),
     } as unknown as jest.Mocked<BookingConfirmedEmailTemplate>;
 
     cancelledTemplate = {
-      build: jest.fn().mockReturnValue({
-        subject: 'Booking Cancelled',
-        text: 'cancelled text',
-        html: '<p>cancelled</p>',
-      }),
+      build: jest.fn().mockReturnValue(cancelledTemplateResult),
     } as unknown as jest.Mocked<BookingCancelledEmailTemplate>;
 
     service = new NotificationService(
@@ -79,14 +89,14 @@ describe('NotificationService', () => {
   });
 
   it('should build and send booking confirmed email', async () => {
-    await service.sendBookingConfirmedEmail(payload);
+    await service.sendBookingConfirmedEmail(confirmedPayload);
 
-    expect(confirmedTemplate.build).toHaveBeenCalledWith(payload);
+    expect(confirmedTemplate.build).toHaveBeenCalledWith(confirmedPayload);
     expect(emailProvider.send).toHaveBeenCalledWith({
-      to: payload.email,
-      subject: 'Booking Confirmed',
-      text: 'confirmed text',
-      html: '<p>confirmed</p>',
+      to: confirmedPayload.email,
+      subject: confirmedTemplateResult.subject,
+      text: confirmedTemplateResult.text,
+      html: confirmedTemplateResult.html,
     });
   });
 
@@ -95,28 +105,28 @@ describe('NotificationService', () => {
       throw new Error('invalid template input');
     });
 
-    await expect(service.sendBookingConfirmedEmail(payload)).rejects.toThrow(
+    await expect(service.sendBookingConfirmedEmail(confirmedPayload)).rejects.toThrow(
       'invalid template input',
     );
     expect(emailProvider.send).not.toHaveBeenCalled();
   });
 
   it('should build and send booking cancelled email', async () => {
-    await service.sendBookingCancelledEmail(payload);
+    await service.sendBookingCancelledEmail(cancelledPayload);
 
-    expect(cancelledTemplate.build).toHaveBeenCalledWith(payload);
+    expect(cancelledTemplate.build).toHaveBeenCalledWith(cancelledPayload);
     expect(emailProvider.send).toHaveBeenCalledWith({
-      to: payload.email,
-      subject: 'Booking Cancelled',
-      text: 'cancelled text',
-      html: '<p>cancelled</p>',
+      to: cancelledPayload.email,
+      subject: cancelledTemplateResult.subject,
+      text: cancelledTemplateResult.text,
+      html: cancelledTemplateResult.html,
     });
   });
 
   it('should rethrow when cancelled email send fails', async () => {
     emailProvider.send.mockRejectedValueOnce(new Error('send failed'));
 
-    await expect(service.sendBookingCancelledEmail(payload)).rejects.toThrow(
+    await expect(service.sendBookingCancelledEmail(cancelledPayload)).rejects.toThrow(
       'send failed',
     );
   });
