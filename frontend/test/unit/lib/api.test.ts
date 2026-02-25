@@ -28,7 +28,7 @@ describe('apiRequest', () => {
     const result = await apiRequest('/auth/me');
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:3000/auth/me',
+      'http://localhost:5173/auth/me',
       {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -49,7 +49,7 @@ describe('apiRequest', () => {
     await apiRequest('/auth/login', { method: 'POST', body });
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:3000/auth/login',
+      'http://localhost:5173/auth/login',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

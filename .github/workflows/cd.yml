@@ -97,12 +97,12 @@ jobs:
             npm ci --omit=dev
             npx prisma generate
             pm2 delete bookit-api 2>/dev/null || true
-            PORT=3000 pm2 start dist/src/main.js --name bookit-api
+            PORT=5173 pm2 start dist/src/main.js --name bookit-api
 
             cd ~/BookIt/frontend
             npm ci --omit=dev
             pm2 delete bookit-frontend 2>/dev/null || true
-            pm2 start "npx serve dist -l 5173" --name bookit-frontend
+            pm2 start "npx serve dist -l 3000" --name bookit-frontend
 
             pm2 save
             echo "Deploy complete."
