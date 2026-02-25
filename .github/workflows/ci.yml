@@ -24,7 +24,7 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          VITE_API_URL: ${{ github.ref == 'refs/heads/main' && secrets.DEPLOY_API_URL || 'http://localhost:5173' }}
+          VITE_API_URL: ${{ github.ref == 'refs/heads/main' && secrets.DEPLOY_API_URL || 'http://localhost:3000' }}
       - run: npm test
 
       - name: Upload frontend build

@@ -4,11 +4,6 @@ import { apiRequest } from '../../../src/lib/api.ts';
 describe('apiRequest', () => {
   const originalFetch = globalThis.fetch;
 
-  const mockHeaders = (contentType = 'application/json') => ({
-    get: (name: string) =>
-      name.toLowerCase() === 'content-type' ? contentType : null,
-  });
-
   beforeEach(() => {
     globalThis.fetch = vi.fn();
   });
@@ -21,14 +16,13 @@ describe('apiRequest', () => {
     const mockData = { id: '1', email: 'test@ncs.com.sg' };
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
-      headers: mockHeaders(),
       json: () => Promise.resolve(mockData),
     });
 
     const result = await apiRequest('/auth/me');
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:5173/auth/me',
+      'http://localhost:3000/auth/me',
       {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -42,14 +36,13 @@ describe('apiRequest', () => {
     const body = { email: 'test@ncs.com.sg', password: 'password123' };
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
-      headers: mockHeaders(),
       json: () => Promise.resolve({ accessToken: 'jwt' }),
     });
 
     await apiRequest('/auth/login', { method: 'POST', body });
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:5173/auth/login',
+      'http://localhost:3000/auth/login',
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -61,7 +54,6 @@ describe('apiRequest', () => {
   it('should add Authorization header when token is provided', async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
-      headers: mockHeaders(),
       json: () => Promise.resolve({}),
     });
 
@@ -81,7 +73,6 @@ describe('apiRequest', () => {
   it('should throw an error when response is not ok (string message)', async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: false,
-      headers: mockHeaders(),
       json: () => Promise.resolve({ message: 'Invalid email or password' }),
     });
 
@@ -93,7 +84,6 @@ describe('apiRequest', () => {
   it('should throw an error with joined messages when response has array message', async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: false,
-      headers: mockHeaders(),
       json: () =>
         Promise.resolve({ message: ['email must be valid', 'password too short'] }),
     });
