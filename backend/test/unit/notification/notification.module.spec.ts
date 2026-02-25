@@ -29,15 +29,14 @@ describe('NotificationModule', () => {
       .compile();
 
     const notificationService = module.get(NotificationService);
-    const gmailProvider = module.get(GmailProvider);
-    const emailProviderAlias = module.get(EMAIL_PROVIDER);
+    const emailProvider = module.get(EMAIL_PROVIDER);
     const confirmedTemplate = module.get(BookingConfirmedEmailTemplate);
     const cancelledTemplate = module.get(BookingCancelledEmailTemplate);
 
     expect(notificationService).toBeDefined();
-    expect(gmailProvider).toBeDefined();
+    expect(emailProvider).toBeDefined();
     expect(confirmedTemplate).toBeDefined();
     expect(cancelledTemplate).toBeDefined();
-    expect(emailProviderAlias).toBe(gmailProvider);
+    expect(emailProvider).toBeInstanceOf(GmailProvider);
   });
 });
