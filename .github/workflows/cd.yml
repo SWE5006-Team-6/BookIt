@@ -51,8 +51,6 @@ jobs:
           npm run build
         env:
           VITE_API_URL: ${{ secrets.DEPLOY_API_URL }}
-          # Optional: set secret VITE_BASE_PATH=/sit/ to serve app at https://www.bookit.com/sit
-          VITE_BASE_PATH: ${{ secrets.VITE_BASE_PATH }}
 
       - name: Setup SSH key
         run: |

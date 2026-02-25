@@ -6,16 +6,9 @@ import { system } from './theme.ts';
 import { AuthProvider } from './contexts/AuthContext.tsx';
 import App from './App.tsx';
 
-// Match Vite base: e.g. VITE_BASE_PATH=/sit/ → basename /sit (no trailing slash)
-const basePath = import.meta.env.VITE_BASE_PATH;
-const basename =
-  basePath && String(basePath).trim()
-    ? String(basePath).trim().replace(/\/$/, '')
-    : undefined;
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter basename={basename}>
+    <BrowserRouter>
       <ChakraProvider value={system}>
         <AuthProvider>
           <App />
