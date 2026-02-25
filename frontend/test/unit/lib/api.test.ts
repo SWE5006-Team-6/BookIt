@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { apiRequest, getApiUrl } from '../../../src/lib/api.ts';
+import { apiRequest } from '../../../src/lib/api.ts';
 
 describe('apiRequest', () => {
   const originalFetch = globalThis.fetch;
@@ -18,14 +18,44 @@ describe('apiRequest', () => {
     vi.unstubAllEnvs();
   });
 
-  it('should use VITE_API_URL when configured', () => {
+  it('should use VITE_API_URL when configured', async () => {
+    vi.resetModules();
     vi.stubEnv('VITE_API_URL', 'http://api.example.test:9999');
-    expect(getApiUrl()).toBe('http://api.example.test:9999');
+
+    const { apiRequest: dynamicApiRequest } = await import('../../../src/lib/api.ts');
+
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      headers: mockHeaders(),
+      json: () => Promise.resolve({ ok: true }),
+    });
+
+    await dynamicApiRequest('/auth/me');
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'http://api.example.test:9999/auth/me',
+      expect.any(Object),
+    );
   });
 
-  it('should fallback to current host with port 5173 when VITE_API_URL is empty', () => {
+  it('should fallback to current host with port 5173 when VITE_API_URL is empty', async () => {
+    vi.resetModules();
     vi.stubEnv('VITE_API_URL', '');
-    expect(getApiUrl()).toBe('http://localhost:5173');
+
+    const { apiRequest: dynamicApiRequest } = await import('../../../src/lib/api.ts');
+
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      headers: mockHeaders(),
+      json: () => Promise.resolve({ ok: true }),
+    });
+
+    await dynamicApiRequest('/auth/me');
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'http://localhost:5173/auth/me',
+      expect.any(Object),
+    );
   });
 
   it('should make a GET request by default', async () => {
