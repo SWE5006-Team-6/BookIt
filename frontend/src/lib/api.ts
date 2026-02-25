@@ -1,4 +1,9 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// At build time: VITE_API_URL or DEPLOY_API_URL (in CI/CD). Fallback for deploy: same host, port 3000.
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (typeof window !== 'undefined'
+    ? `${window.location.protocol}//${window.location.hostname}:3000`
+    : 'http://localhost:3000');
 
 interface ApiOptions {
   method?: string;
@@ -25,6 +30,16 @@ export async function apiRequest<T>(
     headers,
     body: body ? JSON.stringify(body) : undefined,
   });
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const text = await response.text();
+    if (text.trimStart().startsWith('<!') || text.trimStart().startsWith('<')) {
+      throw new Error(
+        `API returned HTML instead of JSON. Is the backend running at ${API_URL}? Check VITE_API_URL (or DEPLOY_API_URL when building for deploy).`,
+      );
+    }
+  }
 
   const data = await response.json();
 
