@@ -17,7 +17,7 @@ export interface Booking {
   title: string;
   startAt: string;
   endAt: string;
-  status: 'CONFIRMED' | 'CANCELLED' | 'RELEASED_NO_SHOW';
+  status: 'CONFIRMED' | 'CHECKED_IN' | 'CANCELLED' | 'RELEASED';
   cancelledAt: string | null;
   cancelReason: string | null;
   checkedInAt: string | null;

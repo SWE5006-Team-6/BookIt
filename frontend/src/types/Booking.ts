@@ -1,7 +1,7 @@
 import type Room from "./Room";
 import type User from "./User";
 
-type BookingStatus = 'CONFIRMED' | 'CANCELLED' | 'RELEASED_NO_SHOW';
+type BookingStatus = 'CONFIRMED' | 'CHECKED_IN' | 'CANCELLED' | 'RELEASED';
 
 export default interface Booking {
   id: string;

@@ -107,4 +107,77 @@ describe('BookingPoliciesPage', () => {
     await user.click(screen.getByRole('button', { name: /save/i }));
     expect(await screen.findByText(/failed to update policy/i)).toBeInTheDocument();
   });
+
+  it('shows API error message when save fails with Error', async () => {
+    (apiRequest as any)
+      .mockResolvedValueOnce(policies)
+      .mockRejectedValueOnce(new Error('Policy cannot be changed'));
+
+    const user = userEvent.setup();
+    renderWithProviders(<BookingPoliciesPage />);
+    const input = await screen.findByDisplayValue('30');
+    await user.clear(input);
+    await user.type(input, '35');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(await screen.findByText(/policy cannot be changed/i)).toBeInTheDocument();
+  });
+
+  it('does not show save/reset buttons when nothing changed', async () => {
+    (apiRequest as any).mockResolvedValueOnce(policies);
+    renderWithProviders(<BookingPoliciesPage />);
+
+    await screen.findByText('Min Duration');
+    expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /reset/i })).not.toBeInTheDocument();
+  });
+
+  it('allows active toggle update and saves isActive=false', async () => {
+    (apiRequest as any)
+      .mockResolvedValueOnce(policies)
+      .mockResolvedValueOnce({ ...policies[0], isActive: false });
+
+    const user = userEvent.setup();
+    renderWithProviders(<BookingPoliciesPage />);
+
+    await screen.findByText('Min Duration');
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(apiRequest).toHaveBeenCalledWith(
+        '/booking-policies/min_duration_minutes',
+        expect.objectContaining({
+          method: 'PATCH',
+          body: expect.objectContaining({ isActive: false }),
+        }),
+      );
+    });
+    expect(await screen.findByText(/updated/i)).toBeInTheDocument();
+  });
+
+  it('passes undefined token when auth token is missing', async () => {
+    mockUseAuth.mockReturnValue({ token: null });
+    (apiRequest as any).mockResolvedValueOnce(policies);
+
+    renderWithProviders(<BookingPoliciesPage />);
+
+    await screen.findByText('Min Duration');
+    expect(apiRequest).toHaveBeenCalledWith(
+      '/booking-policies',
+      expect.objectContaining({ token: undefined }),
+    );
+  });
+
+  it('schedules auto-dismiss for banner message after timeout', async () => {
+    const timeoutSpy = vi.spyOn(global, 'setTimeout');
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    (apiRequest as any).mockRejectedValueOnce(new Error('load failed'));
+    renderWithProviders(<BookingPoliciesPage />);
+
+    expect(await screen.findByText(/failed to load booking policies/i)).toBeInTheDocument();
+    expect(timeoutSpy).toHaveBeenCalledWith(expect.any(Function), 5000);
+    timeoutSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
 });

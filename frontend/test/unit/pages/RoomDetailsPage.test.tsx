@@ -51,7 +51,7 @@ vi.mock('../../../src/components/booking/TimeSlotGrid', () => ({
 vi.mock('../../../src/lib/booking-slots', () => ({
   DEFAULT_BOOKING_UI_CONSTRAINTS: {
     minDurationMinutes: 30,
-    minAdvanceMinutes: 30,
+    minAdvanceMinutes: 0,
     maxDurationMinutes: 120,
     maxAdvanceDays: 14,
   },
@@ -249,7 +249,7 @@ describe('RoomDetailsPage', () => {
       .mockResolvedValueOnce(bookings)
       .mockResolvedValueOnce([
         { key: 'min_duration_minutes', value: '45', isActive: true },
-        { key: 'min_advance_minutes', value: '30', isActive: false },
+        { key: 'min_advance_minutes', value: '30', isActive: true },
         { key: 'max_duration_minutes', value: '-1', isActive: true },
         { key: 'max_advance_days', value: '7', isActive: true },
       ]);
@@ -264,7 +264,7 @@ describe('RoomDetailsPage', () => {
         expect.objectContaining({
           constraints: expect.objectContaining({
             minDurationMinutes: 45,
-            minAdvanceMinutes: 0,
+            minAdvanceMinutes: 30,
             maxDurationMinutes: null,
             maxAdvanceDays: 7,
           }),

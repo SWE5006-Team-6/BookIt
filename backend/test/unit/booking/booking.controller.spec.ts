@@ -113,6 +113,10 @@ describe('BookingController', () => {
     create: jest.fn().mockResolvedValue(createResult),
     update: jest.fn().mockResolvedValue(updateResult),
     cancel: jest.fn().mockResolvedValue(cancelResult),
+    checkIn: jest.fn().mockResolvedValue({
+      ...mockBookings[0],
+      checkedInAt: new Date('2026-02-10T10:05:00Z'),
+    }),
   };
 
   beforeEach(async () => {
@@ -239,6 +243,14 @@ describe('BookingController', () => {
       const result = await controller.cancel('1', undefined as any, mockUser);
       expect(result).toEqual(cancelWithoutReasonResult);
       expect(service.cancel).toHaveBeenCalledWith('1', undefined, mockUser);
+    });
+  });
+
+  describe('checkIn', () => {
+    it('should check in a booking', async () => {
+      const result = await controller.checkIn('1', mockUser);
+      expect(result.checkedInAt).toBeDefined();
+      expect(service.checkIn).toHaveBeenCalledWith('1', mockUser);
     });
   });
 

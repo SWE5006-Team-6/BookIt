@@ -33,7 +33,6 @@ describe('BookingPolicyChainService', () => {
   let maxDurationHandler: MockHandler;
   let minDurationHandler: MockHandler;
   let advanceBookingHandler: MockHandler;
-  let minAdvanceTimeHandler: MockHandler;
   let maxBookingsPerUserHandler: MockHandler;
   let service: BookingPolicyChainService;
 
@@ -42,7 +41,6 @@ describe('BookingPolicyChainService', () => {
     maxDurationHandler = createHandler();
     minDurationHandler = createHandler();
     advanceBookingHandler = createHandler();
-    minAdvanceTimeHandler = createHandler();
     maxBookingsPerUserHandler = createHandler();
 
     service = new BookingPolicyChainService(
@@ -50,7 +48,6 @@ describe('BookingPolicyChainService', () => {
       maxDurationHandler as any,
       minDurationHandler as any,
       advanceBookingHandler as any,
-      minAdvanceTimeHandler as any,
       maxBookingsPerUserHandler as any,
     );
   });

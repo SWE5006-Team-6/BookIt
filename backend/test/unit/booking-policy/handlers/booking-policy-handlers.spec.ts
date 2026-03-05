@@ -2,7 +2,6 @@ import { BadRequestException } from '@nestjs/common';
 import { MaxDurationHandler } from '../../../../src/booking-policy/handlers/max-duration.handler';
 import { MinDurationHandler } from '../../../../src/booking-policy/handlers/min-duration.handler';
 import { AdvanceBookingHandler } from '../../../../src/booking-policy/handlers/advance-booking.handler';
-import { MinAdvanceTimeHandler } from '../../../../src/booking-policy/handlers/min-advance-time.handler';
 import type { BookingRequestContext } from '../../../../src/booking-policy/handlers/booking-policy.handler';
 
 function makeContext(overrides: Partial<BookingRequestContext> = {}): BookingRequestContext {
@@ -117,31 +116,6 @@ describe('AdvanceBookingHandler', () => {
     });
     await expect(handler.handle(ctx)).rejects.toThrow(BadRequestException);
     await expect(handler.handle(ctx)).rejects.toThrow(/7 days/);
-  });
-});
-
-describe('MinAdvanceTimeHandler', () => {
-  let handler: MinAdvanceTimeHandler;
-
-  beforeEach(() => {
-    handler = new MinAdvanceTimeHandler();
-  });
-
-  it('should pass when booking has enough advance time', async () => {
-    handler.configure('30');
-    const ctx = makeContext();
-    await expect(handler.handle(ctx)).resolves.toBeUndefined();
-  });
-
-  it('should reject when booking is too soon', async () => {
-    handler.configure('60');
-    const now = new Date();
-    const ctx = makeContext({
-      startAt: new Date(now.getTime() + 10 * 60 * 1000),
-      endAt: new Date(now.getTime() + 70 * 60 * 1000),
-    });
-    await expect(handler.handle(ctx)).rejects.toThrow(BadRequestException);
-    await expect(handler.handle(ctx)).rejects.toThrow(/at least 60 minutes/);
   });
 });
 

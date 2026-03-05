@@ -19,10 +19,12 @@ export class MaxBookingsPerUserHandler extends BookingPolicyHandler {
   }
 
   protected async check(context: BookingRequestContext): Promise<void> {
+    const now = new Date();
     const activeCount = await this.prisma.booking.count({
       where: {
         bookedById: context.userId,
-        status: BookingStatus.CONFIRMED,
+        status: { in: [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN] },
+        endAt: { gt: now },
       },
     });
 

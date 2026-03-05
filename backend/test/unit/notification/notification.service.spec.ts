@@ -3,6 +3,7 @@ import { EMAIL_PROVIDER } from '../../../src/notification/types/email-provider.t
 import type { EmailProvider } from '../../../src/notification/types/email-provider.types';
 import { BookingConfirmedEmailTemplate } from '../../../src/notification/templates/booking-confirmed-email.template';
 import { BookingCancelledEmailTemplate } from '../../../src/notification/templates/booking-cancelled-email.template';
+import { BookingReleasedEmailTemplate } from '../../../src/notification/templates/booking-released-email.template';
 import type { BookingNotificationData } from '../../../src/booking/types/booking-notification.types';
 
 describe('NotificationService', () => {
@@ -10,6 +11,7 @@ describe('NotificationService', () => {
   let emailProvider: jest.Mocked<EmailProvider>;
   let confirmedTemplate: jest.Mocked<BookingConfirmedEmailTemplate>;
   let cancelledTemplate: jest.Mocked<BookingCancelledEmailTemplate>;
+  let releasedTemplate: jest.Mocked<BookingReleasedEmailTemplate>;
 
   const confirmedPayload: BookingNotificationData = {
     email: 'user@example.com',
@@ -38,6 +40,11 @@ describe('NotificationService', () => {
     text: 'cancelled text',
     html: '<p>cancelled</p>',
   };
+  const releasedTemplateResult = {
+    subject: 'Booking Released',
+    text: 'released text',
+    html: '<p>released</p>',
+  };
 
   beforeEach(() => {
     emailProvider = {
@@ -51,11 +58,15 @@ describe('NotificationService', () => {
     cancelledTemplate = {
       build: jest.fn().mockReturnValue(cancelledTemplateResult),
     } as unknown as jest.Mocked<BookingCancelledEmailTemplate>;
+    releasedTemplate = {
+      build: jest.fn().mockReturnValue(releasedTemplateResult),
+    } as unknown as jest.Mocked<BookingReleasedEmailTemplate>;
 
     service = new NotificationService(
       emailProvider,
       confirmedTemplate,
       cancelledTemplate,
+      releasedTemplate,
     );
   });
 
@@ -133,5 +144,17 @@ describe('NotificationService', () => {
 
   it('should expose the adapter token constant', () => {
     expect(EMAIL_PROVIDER).toBe('EMAIL_PROVIDER');
+  });
+
+  it('should build and send booking released email', async () => {
+    await service.sendBookingReleasedEmail(cancelledPayload);
+
+    expect(releasedTemplate.build).toHaveBeenCalledWith(cancelledPayload);
+    expect(emailProvider.send).toHaveBeenCalledWith({
+      to: cancelledPayload.email,
+      subject: releasedTemplateResult.subject,
+      text: releasedTemplateResult.text,
+      html: releasedTemplateResult.html,
+    });
   });
 });

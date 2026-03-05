@@ -6,6 +6,7 @@ import { NotificationService } from '../../../src/notification/notification.serv
 import { GmailProvider } from '../../../src/notification/providers/gmail.provider';
 import { BookingConfirmedEmailTemplate } from '../../../src/notification/templates/booking-confirmed-email.template';
 import { BookingCancelledEmailTemplate } from '../../../src/notification/templates/booking-cancelled-email.template';
+import { BookingReleasedEmailTemplate } from '../../../src/notification/templates/booking-released-email.template';
 
 describe('NotificationModule', () => {
   async function compileWithConfig(configValues: Record<string, string>) {
@@ -45,11 +46,13 @@ describe('NotificationModule', () => {
     const emailProvider = module.get(EMAIL_PROVIDER);
     const confirmedTemplate = module.get(BookingConfirmedEmailTemplate);
     const cancelledTemplate = module.get(BookingCancelledEmailTemplate);
+    const releasedTemplate = module.get(BookingReleasedEmailTemplate);
 
     expect(notificationService).toBeDefined();
     expect(emailProvider).toBeDefined();
     expect(confirmedTemplate).toBeDefined();
     expect(cancelledTemplate).toBeDefined();
+    expect(releasedTemplate).toBeDefined();
     expect(emailProvider).toBeInstanceOf(GmailProvider);
   });
 

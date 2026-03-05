@@ -65,4 +65,9 @@ export class BookingController {
   ) {
     return this.bookingService.cancel(id, body.reason, user);
   }
+
+  @Post(':id/check-in')
+  checkIn(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.bookingService.checkIn(id, user);
+  }
 }

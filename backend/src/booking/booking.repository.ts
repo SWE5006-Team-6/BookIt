@@ -56,7 +56,7 @@ export class BookingRepository {
     return this.prisma.booking.findMany({
       where: {
         roomId,
-        status: { in: [BookingStatus.CONFIRMED] },
+        status: { in: [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN] },
       },
       include: {
         bookedBy: {
@@ -92,7 +92,7 @@ export class BookingRepository {
     const overlappingBookings = await this.prisma.booking.findMany({
       where: {
         roomId,
-        status: BookingStatus.CONFIRMED,
+        status: { in: [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN] },
         OR: [
           {
             AND: [
@@ -209,5 +209,88 @@ export class BookingRepository {
         },
       },
     });
+  }
+
+  async checkIn(id: string, checkedInAt: Date) {
+    return this.prisma.booking.update({
+      where: { id },
+      data: {
+        status: BookingStatus.CHECKED_IN,
+        checkedInAt,
+      },
+      include: {
+        room: {
+          select: {
+            id: true,
+            name: true,
+            capacity: true,
+            location: true,
+          },
+        },
+        bookedBy: {
+          select: {
+            id: true,
+            email: true,
+            displayName: true,
+          },
+        },
+      },
+    });
+  }
+
+  async releaseExpiredNoShows(deadline: Date, releasedAt: Date, reason: string) {
+    const expiredBookings = await this.prisma.booking.findMany({
+      where: {
+        status: BookingStatus.CONFIRMED,
+        checkedInAt: null,
+        startAt: { lte: deadline },
+        createdAt: { lte: deadline },
+      },
+      include: {
+        room: {
+          select: {
+            id: true,
+            name: true,
+            capacity: true,
+            location: true,
+          },
+        },
+        bookedBy: {
+          select: {
+            id: true,
+            email: true,
+            displayName: true,
+          },
+        },
+      },
+    });
+
+    if (expiredBookings.length === 0) {
+      return [];
+    }
+
+    await this.prisma.booking.updateMany({
+      where: {
+        id: { in: expiredBookings.map((booking) => booking.id) },
+        status: BookingStatus.CONFIRMED,
+        checkedInAt: null,
+      },
+      data: {
+        status: BookingStatus.RELEASED,
+        cancelledAt: releasedAt,
+        cancelReason: reason,
+        releasedAt,
+        releaseReason: reason,
+      },
+    });
+
+    return expiredBookings.map((booking) => ({
+      ...booking,
+      status: BookingStatus.RELEASED,
+      cancelledAt: releasedAt,
+      cancelReason: reason,
+      releasedAt,
+      releaseReason: reason,
+    }));
   }
 }

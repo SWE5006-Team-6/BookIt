@@ -6,7 +6,6 @@ import { BookingPolicyChainService } from './handlers/booking-policy-chain.servi
 import { MaxDurationHandler } from './handlers/max-duration.handler';
 import { MinDurationHandler } from './handlers/min-duration.handler';
 import { AdvanceBookingHandler } from './handlers/advance-booking.handler';
-import { MinAdvanceTimeHandler } from './handlers/min-advance-time.handler';
 import { MaxBookingsPerUserHandler } from './handlers/max-bookings-per-user.handler';
 
 @Module({
@@ -18,9 +17,12 @@ import { MaxBookingsPerUserHandler } from './handlers/max-bookings-per-user.hand
     MaxDurationHandler,
     MinDurationHandler,
     AdvanceBookingHandler,
-    MinAdvanceTimeHandler,
     MaxBookingsPerUserHandler,
   ],
-  exports: [BookingPolicyService, BookingPolicyChainService],
+  exports: [
+    BookingPolicyService,
+    BookingPolicyRepository,
+    BookingPolicyChainService,
+  ],
 })
 export class BookingPolicyModule {}

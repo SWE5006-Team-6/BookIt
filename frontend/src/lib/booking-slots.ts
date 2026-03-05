@@ -13,7 +13,7 @@ export interface BookingUiConstraints {
 
 export const DEFAULT_BOOKING_UI_CONSTRAINTS: BookingUiConstraints = {
   minDurationMinutes: 30,
-  minAdvanceMinutes: 30,
+  minAdvanceMinutes: 0,
   maxDurationMinutes: 120,
   maxAdvanceDays: 14,
 };
@@ -76,7 +76,13 @@ export function buildStartSlotOptions({
   if (!selectedDate) return [];
 
   const intervals = parseIntervals(bookings);
-  const minStartTime = new Date(now.getTime() + constraints.minAdvanceMinutes * 60 * 1000);
+  const slotWindowMinutes = Math.max(
+    constraints.minDurationMinutes,
+    SLOT_INTERVAL_MINUTES,
+  );
+  const minStartTime = constraints.minAdvanceMinutes > 0
+    ? new Date(now.getTime() + constraints.minAdvanceMinutes * 60 * 1000)
+    : new Date(now.getTime() - slotWindowMinutes * 60 * 1000);
   const maxAdvanceTime = constraints.maxAdvanceDays == null
     ? null
     : new Date(now.getTime() + constraints.maxAdvanceDays * 24 * 60 * 60 * 1000);
@@ -106,7 +112,9 @@ export function buildStartSlotOptions({
 
     if (startAt < minStartTime) {
       disabled = true;
-      reason = `Requires ${constraints.minAdvanceMinutes} min notice`;
+      reason = constraints.minAdvanceMinutes > 0
+        ? `Requires ${constraints.minAdvanceMinutes} min notice`
+        : 'Slot start has already passed';
     } else if (maxAdvanceTime && startAt > maxAdvanceTime) {
       disabled = true;
       reason = `Beyond ${constraints.maxAdvanceDays} day advance window`;
