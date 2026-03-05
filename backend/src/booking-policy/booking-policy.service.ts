@@ -31,11 +31,11 @@ const DEFAULT_POLICIES = [
       'How many days in advance a room can be booked. Limits reservations that are too far in the future.',
   },
   {
-    key: 'min_advance_minutes',
-    value: '30',
-    label: 'Minimum Notice Before Booking (minutes)',
+    key: 'no_show_grace_minutes',
+    value: '15',
+    label: 'No-Show Grace Window (minutes)',
     description:
-      'The minimum number of minutes before a booking starts that it must be created. Prevents last-minute reservations.',
+      'How many minutes after booking start a user can still check in before auto-release as no-show.',
   },
   {
     key: 'max_active_bookings_per_user',
@@ -57,14 +57,19 @@ export class BookingPolicyService implements OnModuleInit {
   }
 
   async seedDefaults() {
-    const count = await this.repository.count();
-    if (count > 0) return;
-
-    this.logger.log('Seeding default booking policies...');
+    this.logger.log('Ensuring default booking policies exist...');
+    let createdCount = 0;
     for (const policy of DEFAULT_POLICIES) {
+      const existing = await this.repository.findByKey(policy.key);
+      if (existing) {
+        continue;
+      }
       await this.repository.upsert(policy);
+      createdCount += 1;
     }
-    this.logger.log(`Seeded ${DEFAULT_POLICIES.length} default booking policies`);
+    this.logger.log(
+      `Ensured ${DEFAULT_POLICIES.length} default booking policies (${createdCount} created)`,
+    );
   }
 
   async findAll() {

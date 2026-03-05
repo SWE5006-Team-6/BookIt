@@ -56,7 +56,7 @@ export class RoomsRepository {
         capacity: { gte: capacity }, // change to `equals: capacity` for exact match
         bookings: {
           none: {
-            status: BookingStatus.CONFIRMED,
+            status: { in: [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN] },
             startAt: { lte: dateTime },
             endAt: { gt: dateTime },
           },

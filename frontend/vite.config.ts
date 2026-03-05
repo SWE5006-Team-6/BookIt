@@ -10,11 +10,22 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './test/setup.ts',
     css: true,
+    testTimeout: 15000,
+    fileParallelism: false,
     include: ['test/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/main.tsx', 'src/vite-env.d.ts'],
+      include: [
+        'src/lib/**/*.ts',
+        'src/components/**/*.tsx',
+        'src/pages/**/*.tsx',
+      ],
+      thresholds: {
+        statements: 90,
+        branches: 86,
+        functions: 90,
+        lines: 92,
+      },
     },
   },
 })

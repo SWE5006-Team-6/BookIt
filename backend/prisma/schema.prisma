@@ -72,6 +72,7 @@ model BookingPolicy {
 
 enum BookingStatus {
   CONFIRMED
+  CHECKED_IN
   CANCELLED
-  RELEASED_NO_SHOW
+  RELEASED
 }

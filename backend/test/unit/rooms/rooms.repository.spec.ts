@@ -48,11 +48,17 @@ function createInMemoryPrisma() {
       if (where?.bookings?.none) {
         const none = where.bookings.none;
         const dateTime = none.startAt?.lte;
+        const statusFilter = none.status;
+        const allowedStatuses = statusFilter?.in
+          ? statusFilter.in
+          : statusFilter
+            ? [statusFilter]
+            : [];
         result = result.filter((r) => {
           const hasConflict = bookings.some(
             (b) =>
               b.roomId === r.id &&
-              b.status === none.status &&
+              allowedStatuses.includes(b.status) &&
               b.startAt <= dateTime &&
               b.endAt > dateTime,
           );
@@ -208,7 +214,7 @@ describe('RoomsRepository', () => {
     prisma._bookings.push({
       id: 'booking-1',
       roomId: 'room-1',
-      status: BookingStatus.CONFIRMED,
+      status: BookingStatus.CHECKED_IN,
       startAt: new Date('2026-02-10T09:00:00'),
       endAt: new Date('2026-02-10T11:00:00'),
     });

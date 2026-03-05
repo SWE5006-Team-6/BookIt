@@ -7,6 +7,7 @@ const mockRepository = {
   findByKey: jest.fn(),
   findActive: jest.fn(),
   upsert: jest.fn(),
+  deleteByKey: jest.fn(),
   updateByKey: jest.fn(),
   count: jest.fn(),
 };
@@ -124,21 +125,26 @@ describe('BookingPolicyService', () => {
   });
 
   describe('seedDefaults', () => {
-    it('should seed policies when table is empty', async () => {
-      mockRepository.count.mockResolvedValue(0);
+    it('should upsert only missing default policies', async () => {
+      mockRepository.findByKey.mockImplementation(async (key: string) =>
+        key === 'max_duration_minutes' ? { key, value: '999', isActive: true } : null,
+      );
       mockRepository.upsert.mockResolvedValue({});
 
       await service.seedDefaults();
 
-      expect(mockRepository.upsert).toHaveBeenCalledTimes(5);
+      expect(mockRepository.upsert).toHaveBeenCalledTimes(4);
+      expect(mockRepository.deleteByKey).not.toHaveBeenCalled();
     });
 
-    it('should skip seeding when policies already exist', async () => {
-      mockRepository.count.mockResolvedValue(5);
+    it('should skip upsert when policies already exist', async () => {
+      mockRepository.findByKey.mockResolvedValue({ key: 'any', value: '1', isActive: true });
+      mockRepository.upsert.mockResolvedValue({});
 
       await service.seedDefaults();
 
       expect(mockRepository.upsert).not.toHaveBeenCalled();
+      expect(mockRepository.deleteByKey).not.toHaveBeenCalled();
     });
   });
 

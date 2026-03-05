@@ -3,6 +3,7 @@ describe('Notification metadata branch coverage', () => {
     jest.resetModules();
     jest.dontMock('../../../src/notification/templates/booking-confirmed-email.template');
     jest.dontMock('../../../src/notification/templates/booking-cancelled-email.template');
+    jest.dontMock('../../../src/notification/templates/booking-released-email.template');
     jest.dontMock('@nestjs/config');
   });
 
@@ -15,6 +16,10 @@ describe('Notification metadata branch coverage', () => {
       jest.doMock(
         '../../../src/notification/templates/booking-cancelled-email.template',
         () => ({ BookingCancelledEmailTemplate: undefined }),
+      );
+      jest.doMock(
+        '../../../src/notification/templates/booking-released-email.template',
+        () => ({ BookingReleasedEmailTemplate: undefined }),
       );
 
       const mod = require('../../../src/notification/notification.service');

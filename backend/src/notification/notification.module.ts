@@ -5,6 +5,7 @@ import { GmailProvider } from './providers/gmail.provider';
 import { EMAIL_PROVIDER } from './types/email-provider.types';
 import { BookingConfirmedEmailTemplate } from './templates/booking-confirmed-email.template';
 import { BookingCancelledEmailTemplate } from './templates/booking-cancelled-email.template';
+import { BookingReleasedEmailTemplate } from './templates/booking-released-email.template';
 
 const REQUIRED_GMAIL_KEYS = [
   'GMAIL_USER',
@@ -35,6 +36,7 @@ function getMissingGmailKeys(config: ConfigService): string[] {
     },
     BookingConfirmedEmailTemplate,
     BookingCancelledEmailTemplate,
+    BookingReleasedEmailTemplate,
     NotificationService,
   ],
   exports: [NotificationService],

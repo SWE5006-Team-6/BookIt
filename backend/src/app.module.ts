@@ -9,6 +9,7 @@ import { RoomsModule } from './rooms/rooms.module';
 import { BookingModule } from './booking/booking.module';
 import { BookingPolicyModule } from './booking-policy/booking-policy.module';
 import { NotificationModule } from './notification/notification.module';
+import { BookingLifecycleModule } from './booking-lifecycle/booking-lifecycle.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { NotificationModule } from './notification/notification.module';
     AuthModule,
     RoomsModule,
     BookingModule,
+    BookingLifecycleModule,
     BookingPolicyModule,
     NotificationModule,
   ],

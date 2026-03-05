@@ -19,6 +19,7 @@ describe('RoomsController', () => {
             getRooms: jest.fn(),
             getRoomById: jest.fn(),
             updateRoom: jest.fn(),
+            updateRoomStatus: jest.fn(),
             deleteRoom: jest.fn(),
           },
         },
@@ -37,56 +38,102 @@ describe('RoomsController', () => {
   });
 
   it('should delegate create', async () => {
-    (roomsService.createRoom as jest.Mock).mockResolvedValue({ id: 'room-1' });
+    const created = { id: 'room-1' };
+    (roomsService.createRoom as jest.Mock).mockResolvedValue(created);
     const dto = { name: 'Room A', capacity: 4 };
     const user = { id: 'user-1' } as any;
 
-    await controller.create(dto as any, user);
+    const result = await controller.create(dto as any, user);
 
     expect(roomsService.createRoom).toHaveBeenCalledWith(dto, 'user-1');
+    expect(result).toBe(created);
   });
 
   it('should delegate search', async () => {
-    (roomsService.searchAvailableRooms as jest.Mock).mockResolvedValue([]);
+    const searchResult = [];
+    (roomsService.searchAvailableRooms as jest.Mock).mockResolvedValue(searchResult);
     const dto = { date: '2026-02-10', time: '10:00', capacity: 2 };
 
-    await controller.search(dto as any);
+    const result = await controller.search(dto as any);
 
     expect(roomsService.searchAvailableRooms).toHaveBeenCalledWith(dto);
+    expect(result).toBe(searchResult);
   });
 
   it('should delegate findAll', async () => {
-    (roomsService.getRooms as jest.Mock).mockResolvedValue([]);
+    const rooms = [{ id: 'room-1' }];
+    (roomsService.getRooms as jest.Mock).mockResolvedValue(rooms);
 
-    await controller.findAll();
+    const result = await controller.findAll();
 
     expect(roomsService.getRooms).toHaveBeenCalled();
+    expect(result).toBe(rooms);
   });
 
   it('should delegate findOne', async () => {
-    (roomsService.getRoomById as jest.Mock).mockResolvedValue({ id: 'room-1' });
+    const room = { id: 'room-1' };
+    (roomsService.getRoomById as jest.Mock).mockResolvedValue(room);
 
-    await controller.findOne('room-1');
+    const result = await controller.findOne('room-1');
 
     expect(roomsService.getRoomById).toHaveBeenCalledWith('room-1');
+    expect(result).toBe(room);
   });
 
   it('should delegate update', async () => {
-    (roomsService.updateRoom as jest.Mock).mockResolvedValue({ id: 'room-1' });
+    const updated = { id: 'room-1' };
+    (roomsService.updateRoom as jest.Mock).mockResolvedValue(updated);
     const dto = { name: 'Room B' };
     const user = { id: 'user-2' } as any;
 
-    await controller.update('room-1', dto as any, user);
+    const result = await controller.update('room-1', dto as any, user);
 
     expect(roomsService.updateRoom).toHaveBeenCalledWith('room-1', dto, 'user-2');
+    expect(result).toBe(updated);
+  });
+
+  it('should delegate updateStatus', async () => {
+    const statusUpdated = { id: 'room-1', isActive: false };
+    (roomsService.updateRoomStatus as jest.Mock).mockResolvedValue(statusUpdated);
+    const dto = { isActive: false };
+    const user = { id: 'admin-1' } as any;
+
+    const result = await controller.updateStatus('room-1', dto as any, user);
+
+    expect(roomsService.updateRoomStatus).toHaveBeenCalledWith(
+      'room-1',
+      dto,
+      'admin-1',
+    );
+    expect(result).toBe(statusUpdated);
   });
 
   it('should delegate remove', async () => {
-    (roomsService.deleteRoom as jest.Mock).mockResolvedValue({ id: 'room-1' });
+    const removed = { id: 'room-1' };
+    (roomsService.deleteRoom as jest.Mock).mockResolvedValue(removed);
     const user = { id: 'user-3' } as any;
 
-    await controller.remove('room-1', user);
+    const result = await controller.remove('room-1', user);
 
     expect(roomsService.deleteRoom).toHaveBeenCalledWith('room-1', 'user-3');
+    expect(result).toBe(removed);
+  });
+
+  it('should propagate service errors for updateStatus', async () => {
+    const err = new Error('status update failed');
+    (roomsService.updateRoomStatus as jest.Mock).mockRejectedValue(err);
+
+    await expect(
+      controller.updateStatus('room-1', { isActive: true } as any, { id: 'admin-1' } as any),
+    ).rejects.toThrow('status update failed');
+  });
+
+  it('should propagate service errors for remove', async () => {
+    const err = new Error('delete failed');
+    (roomsService.deleteRoom as jest.Mock).mockRejectedValue(err);
+
+    await expect(
+      controller.remove('room-1', { id: 'admin-1' } as any),
+    ).rejects.toThrow('delete failed');
   });
 });

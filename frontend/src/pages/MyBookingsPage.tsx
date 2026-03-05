@@ -35,7 +35,9 @@ export function MyBookingsPage() {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [checkingInId, setCheckingInId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const { open: isCancelDialogOpen, onOpen, onClose } = useDisclosure();
 
@@ -65,11 +67,32 @@ export function MyBookingsPage() {
     setCancellingId(bookingId);
     try {
       await apiRequest(`/bookings/${bookingId}/cancel`, { method: 'POST', body: {}, token: token ?? undefined });
+      setMessage('Booking cancelled successfully.');
       await loadBookings();
     } catch (error) {
       console.error('Failed to cancel booking:', error);
+      setMessage(error instanceof Error ? error.message : 'Failed to cancel booking.');
     } finally {
       setCancellingId(null);
+    }
+  };
+
+  const handleCheckIn = async (bookingId: string) => {
+    if (!token) return;
+    setCheckingInId(bookingId);
+    try {
+      await apiRequest(`/bookings/${bookingId}/check-in`, {
+        method: 'POST',
+        body: {},
+        token: token ?? undefined,
+      });
+      setMessage('Checked in successfully.');
+      await loadBookings();
+    } catch (error) {
+      console.error('Failed to check in:', error);
+      setMessage(error instanceof Error ? error.message : 'Failed to check in.');
+    } finally {
+      setCheckingInId(null);
     }
   };
 
@@ -109,6 +132,18 @@ export function MyBookingsPage() {
         </Button>
         <Heading size="lg" color="gray.800">My Bookings</Heading>
         <Text color="gray.600">View and manage your room bookings.</Text>
+        {message && (
+          <Box
+            p="3"
+            borderWidth="1px"
+            borderColor="gray.200"
+            borderRadius="md"
+            bg="gray.50"
+            color="gray.700"
+          >
+            <Text fontSize="sm">{message}</Text>
+          </Box>
+        )}
 
         {bookings.length === 0 ? (
           <Card.Root p="8" borderWidth="1px" borderColor="gray.200" borderRadius="lg" bg="white">
@@ -154,25 +189,49 @@ export function MyBookingsPage() {
                           display="inline-block"
                           fontSize="sm"
                           fontWeight="medium"
-                          bg={booking.status === 'CONFIRMED' ? 'green.50' : booking.status === 'CANCELLED' ? 'red.50' : 'gray.100'}
-                          color={booking.status === 'CONFIRMED' ? 'green.700' : booking.status === 'CANCELLED' ? 'red.700' : 'gray.700'}
+                          bg={
+                            booking.status === 'CONFIRMED' || booking.status === 'CHECKED_IN'
+                              ? 'green.50'
+                              : booking.status === 'CANCELLED'
+                                ? 'red.50'
+                                : 'gray.100'
+                          }
+                          color={
+                            booking.status === 'CONFIRMED' || booking.status === 'CHECKED_IN'
+                              ? 'green.700'
+                              : booking.status === 'CANCELLED'
+                                ? 'red.700'
+                                : 'gray.700'
+                          }
                         >
                           {booking.status}
                         </Box>
                       </Table.Cell>
                       <Table.Cell textAlign="right">
                         {booking.status === 'CONFIRMED' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            color="red.600"
-                            borderColor="red.300"
-                            _hover={{ bg: 'red.50' }}
-                            onClick={() => openCancelDialog(booking.id)}
-                            loading={cancellingId === booking.id}
-                          >
-                            Cancel booking
-                          </Button>
+                          <Stack direction={{ base: 'column', md: 'row' }} justify="flex-end">
+                            <Button
+                              size="sm"
+                              bg="#4F46E5"
+                              color="white"
+                              _hover={{ bg: '#4338CA' }}
+                              onClick={() => handleCheckIn(booking.id)}
+                              loading={checkingInId === booking.id}
+                            >
+                              Check in
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              color="red.600"
+                              borderColor="red.300"
+                              _hover={{ bg: 'red.50' }}
+                              onClick={() => openCancelDialog(booking.id)}
+                              loading={cancellingId === booking.id}
+                            >
+                              Cancel booking
+                            </Button>
+                          </Stack>
                         )}
                       </Table.Cell>
                     </Table.Row>

@@ -4,14 +4,12 @@ import { BookingRequestContext } from './booking-policy.handler';
 import { MaxDurationHandler } from './max-duration.handler';
 import { MinDurationHandler } from './min-duration.handler';
 import { AdvanceBookingHandler } from './advance-booking.handler';
-import { MinAdvanceTimeHandler } from './min-advance-time.handler';
 import { MaxBookingsPerUserHandler } from './max-bookings-per-user.handler';
 
 const HANDLER_MAP: Record<string, string> = {
   max_duration_minutes: 'maxDuration',
   min_duration_minutes: 'minDuration',
   max_advance_days: 'advanceBooking',
-  min_advance_minutes: 'minAdvanceTime',
   max_active_bookings_per_user: 'maxBookingsPerUser',
 };
 
@@ -22,7 +20,6 @@ export class BookingPolicyChainService {
     private readonly maxDurationHandler: MaxDurationHandler,
     private readonly minDurationHandler: MinDurationHandler,
     private readonly advanceBookingHandler: AdvanceBookingHandler,
-    private readonly minAdvanceTimeHandler: MinAdvanceTimeHandler,
     private readonly maxBookingsPerUserHandler: MaxBookingsPerUserHandler,
   ) {}
 
@@ -58,7 +55,6 @@ export class BookingPolicyChainService {
       maxDuration: this.maxDurationHandler,
       minDuration: this.minDurationHandler,
       advanceBooking: this.advanceBookingHandler,
-      minAdvanceTime: this.minAdvanceTimeHandler,
       maxBookingsPerUser: this.maxBookingsPerUserHandler,
     };
   }

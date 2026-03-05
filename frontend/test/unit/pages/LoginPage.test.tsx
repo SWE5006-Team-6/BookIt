@@ -6,6 +6,7 @@ import { LoginPage } from '../../../src/pages/LoginPage.tsx';
 
 // Mock useAuth
 const mockLogin = vi.fn();
+const mockLoginWithMfa = vi.fn();
 const mockUseAuth = vi.fn();
 
 vi.mock('../../../src/contexts/AuthContext.tsx', () => ({
@@ -27,7 +28,7 @@ describe('LoginPage', () => {
     vi.clearAllMocks();
     mockUseAuth.mockReturnValue({
       login: mockLogin,
-      loginWithMfa: vi.fn(),
+      loginWithMfa: mockLoginWithMfa,
       user: null,
       token: null,
       isLoading: false,
@@ -97,5 +98,70 @@ describe('LoginPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Invalid email or password')).toBeInTheDocument();
     });
+  });
+
+  it('should render MFA flow and submit sanitized code when required', async () => {
+    mockLogin.mockResolvedValue({ mfaRequired: true });
+    mockLoginWithMfa.mockResolvedValue({});
+    const user = userEvent.setup();
+
+    renderWithProviders(<LoginPage />);
+
+    await user.type(screen.getByPlaceholderText('you@ncs.com.sg'), 'test@ncs.com.sg');
+    await user.type(screen.getByPlaceholderText('Enter your password'), 'password123');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    expect(await screen.findByText(/two-factor authentication/i)).toBeInTheDocument();
+
+    const codeInput = screen.getByPlaceholderText('000000');
+    await user.type(codeInput, '12a34567');
+    expect(codeInput).toHaveValue('123456');
+
+    await user.click(screen.getByRole('button', { name: /verify/i }));
+
+    await waitFor(() => {
+      expect(mockLoginWithMfa).toHaveBeenCalledWith('123456');
+      expect(mockNavigate).toHaveBeenCalledWith('/');
+    });
+  });
+
+  it('should show fallback errors for non-Error rejections and allow returning to sign-in', async () => {
+    mockLogin.mockRejectedValue('bad login');
+    const user = userEvent.setup();
+
+    renderWithProviders(<LoginPage />);
+
+    await user.type(screen.getByPlaceholderText('you@ncs.com.sg'), 'test@ncs.com.sg');
+    await user.type(screen.getByPlaceholderText('Enter your password'), 'password123');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    expect(await screen.findByText('Login failed')).toBeInTheDocument();
+
+    mockLogin.mockResolvedValue({ mfaRequired: true });
+    mockLoginWithMfa.mockRejectedValue('bad code');
+
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+    expect(await screen.findByRole('button', { name: /back to sign in/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /verify/i }));
+    expect(await screen.findByText('Invalid code')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /back to sign in/i }));
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+  });
+
+  it('should display Error message when MFA verification fails with Error instance', async () => {
+    mockLogin.mockResolvedValue({ mfaRequired: true });
+    mockLoginWithMfa.mockRejectedValue(new Error('Code expired'));
+    const user = userEvent.setup();
+
+    renderWithProviders(<LoginPage />);
+
+    await user.type(screen.getByPlaceholderText('you@ncs.com.sg'), 'test@ncs.com.sg');
+    await user.type(screen.getByPlaceholderText('Enter your password'), 'password123');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+    await user.click(await screen.findByRole('button', { name: /verify/i }));
+
+    expect(await screen.findByText('Code expired')).toBeInTheDocument();
   });
 });
