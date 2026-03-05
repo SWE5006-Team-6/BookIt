@@ -170,7 +170,7 @@ describe('BookingPoliciesPage', () => {
   });
 
   it('schedules auto-dismiss for banner message after timeout', async () => {
-    const timeoutSpy = vi.spyOn(global, 'setTimeout');
+    const timeoutSpy = vi.spyOn(globalThis, 'setTimeout');
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     (apiRequest as any).mockRejectedValueOnce(new Error('load failed'));
     renderWithProviders(<BookingPoliciesPage />);
