@@ -6,8 +6,23 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.use(helmet());
-  app.enableCors();
+  app.use(
+    helmet({
+      crossOriginEmbedderPolicy: { policy: 'credentialless' },
+    }),
+  );
+
+  app.use((_req, res, next) => {
+    res.setHeader(
+      'Permissions-Policy',
+      'camera=(), microphone=(), geolocation=()',
+    );
+    next();
+  });
+
+  app.enableCors({
+    origin: process.env.CORS_ORIGIN || '*',
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({

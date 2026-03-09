@@ -97,7 +97,7 @@ jobs:
             npm ci --omit=dev
             npx --yes prisma generate
             pm2 delete bookit-api 2>/dev/null || true
-            PORT=5173 pm2 start dist/src/main.js --name bookit-api
+            CORS_ORIGIN="http://${{ secrets.EC2_HOST }}:3000" PORT=5173 pm2 start dist/src/main.js --name bookit-api
 
             cd ~/BookIt/frontend
             npm ci --omit=dev
