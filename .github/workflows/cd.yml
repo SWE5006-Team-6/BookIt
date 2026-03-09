@@ -95,7 +95,7 @@ jobs:
 
             cd ~/BookIt/backend
             npm ci --omit=dev
-            npx prisma generate
+            npx --yes prisma generate
             pm2 delete bookit-api 2>/dev/null || true
             PORT=5173 pm2 start dist/src/main.js --name bookit-api
 
