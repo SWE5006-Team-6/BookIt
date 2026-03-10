@@ -33,7 +33,7 @@ describe('apiRequest', () => {
     await dynamicApiRequest('/auth/me');
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://api.example.test:9999/auth/me',
+      'http://api.example.test:9999/api/auth/me',
       expect.any(Object),
     );
   });
@@ -53,7 +53,7 @@ describe('apiRequest', () => {
     await dynamicApiRequest('/auth/me');
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:5173/auth/me',
+      'http://localhost:5173/api/auth/me',
       expect.any(Object),
     );
   });

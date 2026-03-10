@@ -6,7 +6,7 @@ const API_URL =
     : 'http://localhost:5173');
 
 /** Base URL without trailing slash so joining with "/auth/login" never produces "//auth/login". */
-const API_BASE = API_URL.replace(/\/$/, '');
+const API_BASE = `${API_URL.replace(/\/$/, '')}/api`;
 
 interface ApiOptions {
   method?: string;
