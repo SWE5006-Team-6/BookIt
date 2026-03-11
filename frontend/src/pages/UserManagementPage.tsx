@@ -265,8 +265,7 @@ export default function UserManagementPage() {
                       </Table.Cell>
                       <Table.Cell textAlign="right">
                         <HStack justify="flex-end" gap="2">
-                          <Box
-                            as="select"
+                          <select
                             value={u.role}
                             disabled={isSelf || isSaving}
                             onChange={(e) => void updateUser(u.id, { role: e.target.value as UserRole })}
@@ -280,7 +279,7 @@ export default function UserManagementPage() {
                           >
                             <option value="USER">USER</option>
                             <option value="ADMIN">ADMIN</option>
-                          </Box>
+                          </select>
                         </HStack>
                       </Table.Cell>
                     </Table.Row>

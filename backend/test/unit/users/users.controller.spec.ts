@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersController } from '../../../src/users/users.controller';
 import { UsersService } from '../../../src/users/users.service';
+import { SupabaseAuthGuard } from '../../../src/auth/guards/supabase-auth.guard';
 
 describe('UsersController', () => {
   let controller: UsersController;
@@ -18,7 +19,10 @@ describe('UsersController', () => {
           },
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(SupabaseAuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<UsersController>(UsersController);
     usersService = module.get<UsersService>(UsersService);
@@ -56,4 +60,3 @@ describe('UsersController', () => {
     expect(result).toBe(updated);
   });
 });
-
