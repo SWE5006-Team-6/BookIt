@@ -132,6 +132,16 @@ export function DashboardPage() {
           >
             Go to Room Management
           </Button>
+          <Button
+            variant="outline"
+            borderColor="#4F46E5"
+            color="#4F46E5"
+            _hover={{ bg: 'white', color: '#4338CA' }}
+            size="lg"
+            onClick={() => navigate('/admin/reports')}
+          >
+            View Utilisation Reports
+          </Button>
         </Stack>
       ) : (
         /* Regular user dashboard */
