@@ -15,6 +15,7 @@ import BookingPoliciesPage from './pages/BookingPoliciesPage';
 import { MyBookingsPage } from './pages/MyBookingsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AdminReportsPage } from './pages/AdminReportsPage';
+import UserManagementPage from './pages/UserManagementPage';
 
 function App() {
   const { user, isLoading } = useAuth();
@@ -74,6 +75,14 @@ function App() {
           element={
             <AdminRoute>
               <AdminReportsPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <AdminRoute>
+              <UserManagementPage />
             </AdminRoute>
           }
         />

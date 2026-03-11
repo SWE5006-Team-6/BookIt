@@ -1,11 +1,28 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.enableCors();
+  app.use(
+    helmet({
+      crossOriginEmbedderPolicy: { policy: 'credentialless' },
+    }),
+  );
+
+  app.use((_req, res, next) => {
+    res.setHeader(
+      'Permissions-Policy',
+      'camera=(), microphone=(), geolocation=()',
+    );
+    next();
+  });
+
+  app.enableCors({
+    origin: process.env.CORS_ORIGIN || '*',
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -18,6 +35,9 @@ async function bootstrap() {
   if (process.env.NODE_ENV !== 'production') {
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
   }
+
+  app.setGlobalPrefix('api');
+
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

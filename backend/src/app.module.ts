@@ -11,6 +11,7 @@ import { BookingPolicyModule } from './booking-policy/booking-policy.module';
 import { NotificationModule } from './notification/notification.module';
 import { BookingLifecycleModule } from './booking-lifecycle/booking-lifecycle.module';
 import { ReportsModule } from './reports/reports.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ReportsModule } from './reports/reports.module';
     BookingPolicyModule,
     NotificationModule,
     ReportsModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

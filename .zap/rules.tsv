@@ -1,0 +1,5 @@
+10035	IGNORE	(Strict-Transport-Security - not applicable on HTTP dev)
+10055	WARN	(CSP fine-tuning - connect-src broad due to dynamic API URL, unsafe-inline required by Chakra UI)
+10109	IGNORE	(Modern Web Application - purely informational, no changes required)
+10049	IGNORE	(Storable and Cacheable Content - informational, static assets are meant to be cached)
+10096	IGNORE	(Timestamp Disclosure - false positive, number in bundled JS is not a server timestamp)
