@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../../helpers/render.tsx';
 import { AdminReportsPage } from '../../../src/pages/AdminReportsPage.tsx';
@@ -24,6 +24,18 @@ vi.mock('react-router', async () => {
 });
 
 describe('AdminReportsPage', () => {
+  function getCurrentMonth() {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Singapore',
+      year: 'numeric',
+      month: '2-digit',
+    }).formatToParts(new Date());
+    const year = parts.find((part) => part.type === 'year')?.value ?? '1970';
+    const month = parts.find((part) => part.type === 'month')?.value ?? '01';
+
+    return `${year}-${month}`;
+  }
+
   const reportPayload = {
     period: {
       month: '2026-03',
@@ -69,13 +81,26 @@ describe('AdminReportsPage', () => {
         releaseRatePct: 33.3,
         checkInRatePct: 33.3,
       },
+      {
+        roomId: 'room-3',
+        name: 'Gamma',
+        location: 'L3',
+        capacity: 10,
+        isActive: true,
+        isAvailable: false,
+        bookingCount: 2,
+        checkedInCount: 2,
+        releasedCount: 0,
+        checkedInMinutes: 300,
+        utilisationPct: 45,
+        releaseRatePct: 0,
+        checkInRatePct: 100,
+      },
     ],
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-03-11T09:00:00'));
     mockUseAuth.mockReturnValue({
       user: { id: 'admin-1', role: 'ADMIN' },
       token: 'fake-token',
@@ -84,11 +109,11 @@ describe('AdminReportsPage', () => {
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   function createUser() {
-    return userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    return userEvent.setup();
   }
 
   it('renders summary cards and room table data', async () => {
@@ -96,9 +121,9 @@ describe('AdminReportsPage', () => {
 
     expect(await screen.findByText('Room Utilisation Report')).toBeInTheDocument();
     expect(await screen.findByText('23.5%')).toBeInTheDocument();
-    expect(screen.getByText('8')).toBeInTheDocument();
-    expect(screen.getByText('5')).toBeInTheDocument();
-    expect(screen.getAllByText('2').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('Total reservations in 2026-03, excluding cancellations')).toBeInTheDocument();
+    expect(screen.getByText('Reservations that were actually used')).toBeInTheDocument();
+    expect(screen.getByText('Reservations released without room usage')).toBeInTheDocument();
     expect(screen.getByText('Alpha')).toBeInTheDocument();
     expect(screen.getByText('Beta')).toBeInTheDocument();
     expect(screen.getByText('4.0h checked-in usage')).toBeInTheDocument();
@@ -125,24 +150,42 @@ describe('AdminReportsPage', () => {
 
     await screen.findByText('Alpha');
 
-    expect(screen.getByLabelText('Report month')).toHaveAttribute('max', '2026-03');
+    expect(screen.getByLabelText('Report month')).toHaveAttribute('max', getCurrentMonth());
   });
 
   it('prevents selecting a future month in the UI', async () => {
     renderWithProviders(<AdminReportsPage />);
 
     await screen.findByText('Alpha');
+    const currentMonth = getCurrentMonth();
+    const [year, month] = currentMonth.split('-').map(Number);
+    const futureMonth = `${year + 1}-${String(month).padStart(2, '0')}`;
 
     fireEvent.change(screen.getByLabelText('Report month'), {
-      target: { value: '2027-03' },
+      target: { value: futureMonth },
     });
 
     await waitFor(() => {
-      expect(apiRequest).not.toHaveBeenCalledWith('/reports/rooms?month=2027-03', {
+      expect(apiRequest).not.toHaveBeenCalledWith(`/reports/rooms?month=${futureMonth}`, {
         token: 'fake-token',
       });
     });
-    expect(screen.getByLabelText('Report month')).toHaveValue('2026-03');
+    expect(screen.getByLabelText('Report month')).toHaveValue(currentMonth);
+  });
+
+  it('falls back to the current month when the picker is cleared', async () => {
+    renderWithProviders(<AdminReportsPage />);
+
+    await screen.findByText('Alpha');
+    const currentMonth = getCurrentMonth();
+
+    fireEvent.change(screen.getByLabelText('Report month'), {
+      target: { value: '' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Report month')).toHaveValue(currentMonth);
+    });
   });
 
   it('shows an error message when the API fails', async () => {
@@ -180,9 +223,9 @@ describe('AdminReportsPage', () => {
     renderWithProviders(<AdminReportsPage />);
 
     await screen.findByText('Alpha');
-    await user.type(screen.getByLabelText('Search room name'), 'gamma');
+    await user.type(screen.getByLabelText('Search room name'), 'zeta');
 
-    expect(screen.getByText('No rooms match "gamma".')).toBeInTheDocument();
+    expect(screen.getByText('No rooms match "zeta".')).toBeInTheDocument();
   });
 
   it('navigates to room management from the header action', async () => {
@@ -214,9 +257,74 @@ describe('AdminReportsPage', () => {
     const roomNames = screen
       .getAllByRole('row')
       .slice(1)
-      .map((row) => row.querySelector('td')?.textContent?.trim())
+      .map((row) => {
+        const firstCell = row.querySelector('td');
+        if (!firstCell) {
+          return null;
+        }
+        const nameNode = within(firstCell).queryByText(/Alpha|Beta|Gamma/);
+        return nameNode?.textContent ?? null;
+      })
       .filter((value): value is string => Boolean(value));
 
-    expect(roomNames).toEqual(['Alpha', 'Beta']);
+    expect(roomNames).toEqual(['Alpha', 'Beta', 'Gamma']);
+  });
+
+  it('toggles sort direction when the same header is clicked twice', async () => {
+    renderWithProviders(<AdminReportsPage />);
+
+    await screen.findByText('Alpha');
+    const roomHeader = screen.getByRole('button', { name: /^Room$/i });
+    fireEvent.click(roomHeader);
+    fireEvent.click(roomHeader);
+
+    const roomNames = screen
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => {
+        const firstCell = row.querySelector('td');
+        if (!firstCell) {
+          return null;
+        }
+        const nameNode = within(firstCell).queryByText(/Alpha|Beta|Gamma/);
+        return nameNode?.textContent ?? null;
+      })
+      .filter((value): value is string => Boolean(value));
+
+    expect(roomNames).toEqual(['Gamma', 'Beta', 'Alpha']);
+  });
+
+  it('supports sorting by derived and numeric columns', async () => {
+    renderWithProviders(<AdminReportsPage />);
+
+    await screen.findByText('Alpha');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Location$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Seats$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Room Status$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Released$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Release Rate$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Used$/i }));
+
+    const gammaRow = screen.getByText('Gamma').closest('tr');
+    expect(gammaRow).toBeInTheDocument();
+    expect(screen.getByText('Maintenance')).toBeInTheDocument();
+    expect(screen.getByText('45.0%')).toBeInTheDocument();
+  });
+
+  it('renders risk styling branches for utilisation and release rate states', async () => {
+    renderWithProviders(<AdminReportsPage />);
+
+    await screen.findByText('Alpha');
+
+    const lowUtilisation = screen.getByText('8.5%');
+    const highUtilisation = screen.getByText('45.0%');
+    const zeroReleaseRate = screen.getByText('0.0%');
+    const highReleaseRate = screen.getByText('33.3%');
+
+    expect(lowUtilisation).toHaveStyle({ color: 'var(--chakra-colors-red-600)' });
+    expect(highUtilisation).toHaveStyle({ color: 'var(--chakra-colors-green-600)' });
+    expect(zeroReleaseRate).toHaveStyle({ color: 'var(--chakra-colors-green-600)' });
+    expect(highReleaseRate).toHaveStyle({ color: 'var(--chakra-colors-orange-600)' });
   });
 });
