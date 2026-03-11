@@ -89,6 +89,15 @@ export function AppLayout() {
                     _hover={{ opacity: '1' }}
                     fontSize="sm"
                   >
+                    <RouterLink to="/admin/reports">Reports</RouterLink>
+                  </ChakraLink>
+                                    <ChakraLink
+                    asChild
+                    color="white"
+                    opacity="0.85"
+                    _hover={{ opacity: '1' }}
+                    fontSize="sm"
+                  >
                     <RouterLink to="/admin/users">Manage Users</RouterLink>
                   </ChakraLink>
                 </>

@@ -10,6 +10,7 @@ import { BookingModule } from './booking/booking.module';
 import { BookingPolicyModule } from './booking-policy/booking-policy.module';
 import { NotificationModule } from './notification/notification.module';
 import { BookingLifecycleModule } from './booking-lifecycle/booking-lifecycle.module';
+import { ReportsModule } from './reports/reports.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { UsersModule } from './users/users.module';
     BookingLifecycleModule,
     BookingPolicyModule,
     NotificationModule,
+    ReportsModule,
     UsersModule,
   ],
   controllers: [AppController],

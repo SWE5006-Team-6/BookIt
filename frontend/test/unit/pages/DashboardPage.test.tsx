@@ -116,6 +116,27 @@ describe('DashboardPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/admin/rooms');
   });
 
+  it('navigates to admin reports from the admin dashboard', async () => {
+    (apiRequest as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([
+        { id: '1', isActive: true, isAvailable: true },
+      ])
+      .mockResolvedValueOnce([]);
+
+    mockUseAuth.mockReturnValue({
+      user: { ...mockUser, role: 'ADMIN' },
+      token: 'fake-token',
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<DashboardPage />);
+
+    await screen.findByText('Available');
+    await user.click(screen.getByRole('button', { name: /view utilisation reports/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/admin/reports');
+  });
+
   it('sets booking count to zero when there is no user id or token', async () => {
     mockUseAuth.mockReturnValue({
       user: { ...mockUser, id: '' },

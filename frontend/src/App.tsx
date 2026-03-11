@@ -14,6 +14,7 @@ import RoomManagementPage from './pages/RoomManagementPage';
 import BookingPoliciesPage from './pages/BookingPoliciesPage';
 import { MyBookingsPage } from './pages/MyBookingsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { AdminReportsPage } from './pages/AdminReportsPage';
 import UserManagementPage from './pages/UserManagementPage';
 
 function App() {
@@ -66,6 +67,14 @@ function App() {
           element={
             <AdminRoute>
               <BookingPoliciesPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/reports"
+          element={
+            <AdminRoute>
+              <AdminReportsPage />
             </AdminRoute>
           }
         />

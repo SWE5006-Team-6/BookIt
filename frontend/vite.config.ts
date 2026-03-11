@@ -15,6 +15,7 @@ export default defineConfig({
     include: ['test/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
+      processingConcurrency: 1,
       include: [
         'src/lib/**/*.ts',
         'src/components/**/*.tsx',
