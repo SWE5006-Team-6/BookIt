@@ -356,7 +356,7 @@ describe('BookingService', () => {
 
     it('rejects when selected slot has already ended', async () => {
       jest.useFakeTimers();
-      jest.setSystemTime(new Date('2099-01-01T10:00:00.000Z'));
+      jest.setSystemTime(new Date('2099-01-01T10:00:00.000Z').getTime());
       try {
         await expect(
           createBooking({
@@ -400,7 +400,7 @@ describe('BookingService', () => {
 
     it('uses configured booking slot minutes when min_duration policy is active', async () => {
       jest.useFakeTimers();
-      jest.setSystemTime(new Date('2099-01-01T10:00:00.000Z'));
+      jest.setSystemTime(new Date('2099-01-01T10:00:00.000Z').getTime());
       bookingPolicyRepository.findByKey.mockImplementation(async (key: string) => {
         if (key === 'min_duration_minutes') {
           return { key, value: '10', isActive: true };
@@ -616,7 +616,7 @@ describe('BookingService', () => {
 
     it('allows check-in for late-created booking within grace from creation time', async () => {
       jest.useFakeTimers();
-      jest.setSystemTime(new Date('2099-01-01T11:06:00.000Z'));
+      jest.setSystemTime(new Date('2099-01-01T11:06:00.000Z').getTime());
       bookingPolicyRepository.findByKey.mockResolvedValue({
         key: 'no_show_grace_minutes',
         value: '5',
@@ -644,7 +644,7 @@ describe('BookingService', () => {
 
     it('caps grace deadline at booking end time', async () => {
       jest.useFakeTimers();
-      jest.setSystemTime(new Date('2099-01-01T11:31:00.000Z'));
+      jest.setSystemTime(new Date('2099-01-01T11:31:00.000Z').getTime());
       bookingPolicyRepository.findByKey.mockResolvedValue({
         key: 'no_show_grace_minutes',
         value: '6',

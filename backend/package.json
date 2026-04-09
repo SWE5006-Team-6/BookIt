@@ -63,10 +63,9 @@
     "typescript-eslint": "^8.20.0"
   },
   "overrides": {
-    "hono": "4.12.5",
-    "@hono/node-server": "1.19.11",
-    "lodash": "4.17.23",
-    "ajv": "8.18.0"
+    "hono": "4.12.12",
+    "@hono/node-server": "1.19.13",
+    "lodash": "4.18.1"
   },
   "jest": {
     "moduleFileExtensions": [
