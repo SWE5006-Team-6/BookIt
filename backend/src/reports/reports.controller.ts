@@ -15,4 +15,11 @@ export class ReportsController {
   getRoomUtilisationReport(@Query('month') month?: string) {
     return this.reportsService.getRoomUtilisationReport(month);
   }
+
+  @Get('no-shows')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  getRoomNoShowReport(@Query('month') month?: string) {
+    return this.reportsService.getRoomNoShowReport(month);
+  }
 }

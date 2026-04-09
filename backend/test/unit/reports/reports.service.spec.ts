@@ -1,336 +1,63 @@
-import { BadRequestException } from '@nestjs/common';
-import { BookingStatus } from '@prisma/client';
+import { InternalServerErrorException } from '@nestjs/common';
+import { REPORT_TYPES } from '../../../src/reports/report-types';
 import { ReportsService } from '../../../src/reports/reports.service';
 
 describe('ReportsService', () => {
-  let service: ReportsService;
-  let prisma: {
-    room: { findMany: jest.Mock };
-    booking: { findMany: jest.Mock };
-  };
-
-  beforeEach(() => {
-    prisma = {
-      room: {
-        findMany: jest.fn(),
-      },
-      booking: {
-        findMany: jest.fn(),
-      },
+  it('delegates room utilisation reports to the matching strategy', async () => {
+    const roomStrategy = {
+      type: REPORT_TYPES.ROOM_UTILISATION,
+      generate: jest.fn().mockResolvedValue({ kind: 'rooms' }),
+    };
+    const noShowStrategy = {
+      type: REPORT_TYPES.ROOM_NO_SHOW,
+      generate: jest.fn().mockResolvedValue({ kind: 'no-shows' }),
     };
 
-    service = new ReportsService(prisma as any);
+    const service = new ReportsService(roomStrategy as any, noShowStrategy as any);
+
+    const result = await service.getRoomUtilisationReport('2026-03');
+
+    expect(roomStrategy.generate).toHaveBeenCalledWith('2026-03', undefined);
+    expect(noShowStrategy.generate).not.toHaveBeenCalled();
+    expect(result).toEqual({ kind: 'rooms' });
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  it('delegates no-show reports to the matching strategy', async () => {
+    const roomStrategy = {
+      type: REPORT_TYPES.ROOM_UTILISATION,
+      generate: jest.fn().mockResolvedValue({ kind: 'rooms' }),
+    };
+    const noShowStrategy = {
+      type: REPORT_TYPES.ROOM_NO_SHOW,
+      generate: jest.fn().mockResolvedValue({ kind: 'no-shows' }),
+    };
+
+    const service = new ReportsService(roomStrategy as any, noShowStrategy as any);
+
+    const result = await service.getRoomNoShowReport('2026-03');
+
+    expect(noShowStrategy.generate).toHaveBeenCalledWith('2026-03', undefined);
+    expect(roomStrategy.generate).not.toHaveBeenCalled();
+    expect(result).toEqual({ kind: 'no-shows' });
   });
 
-  it('builds the room utilisation report for a month', async () => {
-    prisma.room.findMany.mockResolvedValue([
-      {
-        id: 'room-1',
-        name: 'Alpha',
-        location: 'L1',
-        capacity: 8,
-        isActive: true,
-        isAvailable: true,
-      },
-      {
-        id: 'room-2',
-        name: 'Beta',
-        location: null,
-        capacity: 6,
-        isActive: false,
-        isAvailable: false,
-      },
-    ]);
-    prisma.booking.findMany.mockResolvedValue([
-      {
-        id: 'b1',
-        roomId: 'room-1',
-        startAt: new Date('2026-03-05T09:00:00.000Z'),
-        endAt: new Date('2026-03-05T10:30:00.000Z'),
-        status: BookingStatus.CHECKED_IN,
-      },
-      {
-        id: 'b2',
-        roomId: 'room-1',
-        startAt: new Date('2026-03-06T09:00:00.000Z'),
-        endAt: new Date('2026-03-06T10:00:00.000Z'),
-        status: BookingStatus.RELEASED,
-      },
-      {
-        id: 'b3',
-        roomId: 'room-1',
-        startAt: new Date('2026-03-07T09:00:00.000Z'),
-        endAt: new Date('2026-03-07T10:00:00.000Z'),
-        status: BookingStatus.CANCELLED,
-      },
-      {
-        id: 'b4',
-        roomId: 'room-2',
-        startAt: new Date('2026-03-08T15:00:00.000Z'),
-        endAt: new Date('2026-03-08T16:00:00.000Z'),
-        status: BookingStatus.CHECKED_IN,
-      },
-    ]);
+  it('throws if a required strategy is not configured', async () => {
+    const roomStrategy = {
+      type: REPORT_TYPES.ROOM_UTILISATION,
+      generate: jest.fn(),
+    };
+    const noShowStrategy = {
+      type: REPORT_TYPES.ROOM_NO_SHOW,
+      generate: jest.fn(),
+    };
 
-    const result = await service.getRoomUtilisationReport(
-      '2026-03',
-      new Date('2026-03-11T01:00:00.000Z'),
+    const service = new ReportsService(roomStrategy as any, noShowStrategy as any);
+    (service as any).strategies.delete(REPORT_TYPES.ROOM_NO_SHOW);
+
+    await expect(service.getRoomNoShowReport('2026-03')).rejects.toThrow(
+      new InternalServerErrorException(
+        'Report strategy "no-shows" is not configured',
+      ),
     );
-
-    expect(prisma.booking.findMany).toHaveBeenCalledWith({
-      where: {
-        startAt: {
-          gte: new Date('2026-02-28T16:00:00.000Z'),
-          lt: new Date('2026-03-11T01:00:00.000Z'),
-        },
-      },
-      select: {
-        id: true,
-        roomId: true,
-        startAt: true,
-        endAt: true,
-        status: true,
-      },
-    });
-    expect(result.summary).toEqual({
-      totalRooms: 2,
-      activeRooms: 1,
-      overallUtilisationPct: 1.2,
-      totalBookingCount: 3,
-      totalCheckedInCount: 2,
-      totalReleasedCount: 1,
-    });
-    expect(result.rooms).toEqual([
-      {
-        roomId: 'room-1',
-        name: 'Alpha',
-        location: 'L1',
-        capacity: 8,
-        isActive: true,
-        isAvailable: true,
-        bookingCount: 2,
-        checkedInCount: 1,
-        releasedCount: 1,
-        checkedInMinutes: 90,
-        utilisationPct: 1.5,
-        releaseRatePct: 50,
-        checkInRatePct: 50,
-      },
-      {
-        roomId: 'room-2',
-        name: 'Beta',
-        location: null,
-        capacity: 6,
-        isActive: false,
-        isAvailable: false,
-        bookingCount: 1,
-        checkedInCount: 1,
-        releasedCount: 0,
-        checkedInMinutes: 60,
-        utilisationPct: 1,
-        releaseRatePct: 0,
-        checkInRatePct: 100,
-      },
-    ]);
-  });
-
-  it('returns zeroed percentages when there are no rooms or bookings', async () => {
-    prisma.room.findMany.mockResolvedValue([]);
-    prisma.booking.findMany.mockResolvedValue([]);
-
-    const result = await service.getRoomUtilisationReport(
-      '2026-03',
-      new Date('2026-03-11T01:00:00.000Z'),
-    );
-
-    expect(result.summary).toEqual({
-      totalRooms: 0,
-      activeRooms: 0,
-      overallUtilisationPct: 0,
-      totalBookingCount: 0,
-      totalCheckedInCount: 0,
-      totalReleasedCount: 0,
-    });
-    expect(result.rooms).toEqual([]);
-  });
-
-  it('rejects an invalid month format', async () => {
-    await expect(service.getRoomUtilisationReport('03-2026')).rejects.toThrow(
-      BadRequestException,
-    );
-  });
-
-  it('rejects an invalid calendar month', async () => {
-    await expect(service.getRoomUtilisationReport('2026-13')).rejects.toThrow(
-      'month must be a valid calendar month',
-    );
-  });
-
-  it('rejects future months', async () => {
-    await expect(
-      service.getRoomUtilisationReport('2026-04', new Date('2026-03-11T01:00:00.000Z')),
-    ).rejects.toThrow('future months are not allowed');
-  });
-
-  it('uses only elapsed workday minutes for the current day denominator', async () => {
-    prisma.room.findMany.mockResolvedValue([
-      {
-        id: 'room-1',
-        name: 'Alpha',
-        location: 'L1',
-        capacity: 8,
-        isActive: true,
-        isAvailable: true,
-      },
-    ]);
-    prisma.booking.findMany.mockResolvedValue([
-      {
-        id: 'b1',
-        roomId: 'room-1',
-        startAt: new Date('2026-03-11T00:15:00.000Z'),
-        endAt: new Date('2026-03-11T00:45:00.000Z'),
-        status: BookingStatus.CHECKED_IN,
-      },
-    ]);
-
-    const result = await service.getRoomUtilisationReport(
-      '2026-03',
-      new Date('2026-03-11T01:00:00.000Z'),
-    );
-
-    expect(result.summary.overallUtilisationPct).toBe(0.5);
-    expect(result.rooms[0].utilisationPct).toBe(0.5);
-  });
-
-  it('defaults to the current Singapore month when month is omitted', async () => {
-    prisma.room.findMany.mockResolvedValue([]);
-    prisma.booking.findMany.mockResolvedValue([]);
-
-    const result = await service.getRoomUtilisationReport(
-      undefined,
-      new Date('2026-03-11T01:00:00.000Z'),
-    );
-
-    expect(result.period.month).toBe('2026-03');
-    expect(prisma.booking.findMany).toHaveBeenCalledWith({
-      where: {
-        startAt: {
-          gte: new Date('2026-02-28T16:00:00.000Z'),
-          lt: new Date('2026-03-11T01:00:00.000Z'),
-        },
-      },
-      select: {
-        id: true,
-        roomId: true,
-        startAt: true,
-        endAt: true,
-        status: true,
-      },
-    });
-  });
-
-  it('trims whitespace around the month query', async () => {
-    prisma.room.findMany.mockResolvedValue([]);
-    prisma.booking.findMany.mockResolvedValue([]);
-
-    const result = await service.getRoomUtilisationReport(
-      ' 2026-02 ',
-      new Date('2026-03-11T01:00:00.000Z'),
-    );
-
-    expect(result.period.month).toBe('2026-02');
-  });
-
-  it('returns zero utilisation before working hours begin on the current day', async () => {
-    prisma.room.findMany.mockResolvedValue([
-      {
-        id: 'room-1',
-        name: 'Alpha',
-        location: 'L1',
-        capacity: 8,
-        isActive: true,
-        isAvailable: true,
-      },
-    ]);
-    prisma.booking.findMany.mockResolvedValue([]);
-
-    const result = await service.getRoomUtilisationReport(
-      '2026-03',
-      new Date('2026-03-10T23:30:00.000Z'),
-    );
-
-    expect(result.summary.overallUtilisationPct).toBe(0);
-    expect(result.rooms[0].utilisationPct).toBe(0);
-  });
-
-  it('uses a full workday once the current day has passed working hours', async () => {
-    prisma.room.findMany.mockResolvedValue([
-      {
-        id: 'room-1',
-        name: 'Alpha',
-        location: 'L1',
-        capacity: 8,
-        isActive: true,
-        isAvailable: true,
-      },
-    ]);
-    prisma.booking.findMany.mockResolvedValue([
-      {
-        id: 'b1',
-        roomId: 'room-1',
-        startAt: new Date('2026-03-11T09:00:00.000Z'),
-        endAt: new Date('2026-03-11T10:00:00.000Z'),
-        status: BookingStatus.CHECKED_IN,
-      },
-    ]);
-
-    const result = await service.getRoomUtilisationReport(
-      '2026-03',
-      new Date('2026-03-11T12:00:00.000Z'),
-    );
-
-    expect(result.summary.overallUtilisationPct).toBe(0.9);
-    expect(result.rooms[0].utilisationPct).toBe(0.9);
-  });
-
-  it('returns zero rates when a room has no non-cancelled bookings', async () => {
-    prisma.room.findMany.mockResolvedValue([
-      {
-        id: 'room-1',
-        name: 'Alpha',
-        location: 'L1',
-        capacity: 8,
-        isActive: true,
-        isAvailable: true,
-      },
-    ]);
-    prisma.booking.findMany.mockResolvedValue([
-      {
-        id: 'b1',
-        roomId: 'room-1',
-        startAt: new Date('2026-03-05T09:00:00.000Z'),
-        endAt: new Date('2026-03-05T10:00:00.000Z'),
-        status: BookingStatus.CANCELLED,
-      },
-    ]);
-
-    const result = await service.getRoomUtilisationReport(
-      '2026-03',
-      new Date('2026-03-11T01:00:00.000Z'),
-    );
-
-    expect(result.rooms[0]).toMatchObject({
-      bookingCount: 0,
-      checkedInCount: 0,
-      releasedCount: 0,
-      checkedInMinutes: 0,
-      utilisationPct: 0,
-      releaseRatePct: 0,
-      checkInRatePct: 0,
-    });
   });
 });

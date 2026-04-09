@@ -33,6 +33,7 @@ describe('ReportsController', () => {
           provide: ReportsService,
           useValue: {
             getRoomUtilisationReport: jest.fn().mockResolvedValue(reportResult),
+            getRoomNoShowReport: jest.fn().mockResolvedValue(reportResult),
           },
         },
       ],
@@ -64,12 +65,35 @@ describe('ReportsController', () => {
     expect(reportsService.getRoomUtilisationReport).toHaveBeenCalledWith(undefined);
   });
 
+  it('delegates room no-show report generation', async () => {
+    const result = await controller.getRoomNoShowReport('2026-03');
+
+    expect(reportsService.getRoomNoShowReport).toHaveBeenCalledWith('2026-03');
+    expect(result).toEqual(reportResult);
+  });
+
+  it('passes through an omitted month query for the no-show report', async () => {
+    await controller.getRoomNoShowReport(undefined);
+
+    expect(reportsService.getRoomNoShowReport).toHaveBeenCalledWith(undefined);
+  });
+
   it('propagates service errors', async () => {
     (reportsService.getRoomUtilisationReport as jest.Mock).mockRejectedValueOnce(
       new Error('report failed'),
     );
 
     await expect(controller.getRoomUtilisationReport('2026-03')).rejects.toThrow(
+      'report failed',
+    );
+  });
+
+  it('propagates no-show report service errors', async () => {
+    (reportsService.getRoomNoShowReport as jest.Mock).mockRejectedValueOnce(
+      new Error('report failed'),
+    );
+
+    await expect(controller.getRoomNoShowReport('2026-03')).rejects.toThrow(
       'report failed',
     );
   });
