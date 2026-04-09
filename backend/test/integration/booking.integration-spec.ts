@@ -6,7 +6,6 @@ import { resetDatabase } from './support/reset-database';
 
 describe('Booking lifecycle integration', () => {
   let context: Awaited<ReturnType<typeof createIntegrationApp>>;
-  const frozenNow = Date.parse('2026-04-09T09:10:00.000Z');
 
   beforeAll(async () => {
     context = await createIntegrationApp();
@@ -17,10 +16,6 @@ describe('Booking lifecycle integration', () => {
     await seedTestUsers(context.prisma);
   });
 
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
   afterAll(async () => {
     if (context) {
       await context.app.close();
@@ -28,8 +23,10 @@ describe('Booking lifecycle integration', () => {
   });
 
   it('creates a booking and checks it in through the HTTP API', async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(frozenNow);
+    const createStartAt = new Date();
+    createStartAt.setDate(createStartAt.getDate() + 1);
+    createStartAt.setHours(9, 0, 0, 0);
+    const createEndAt = new Date(createStartAt.getTime() + 60 * 60 * 1000);
 
     const room = await context.prisma.room.create({
       data: {
@@ -50,8 +47,8 @@ describe('Booking lifecycle integration', () => {
       .send({
         roomId: room.id,
         title: 'Integration Standup',
-        startAt: '2026-04-09T09:05:00.000Z',
-        endAt: '2026-04-09T10:00:00.000Z',
+        startAt: createStartAt.toISOString(),
+        endAt: createEndAt.toISOString(),
       })
       .expect(201);
 
@@ -62,10 +59,15 @@ describe('Booking lifecycle integration', () => {
       title: 'Integration Standup',
     });
 
+    const checkInWindowStart = new Date(Date.now() - 5 * 60 * 1000);
+    const checkInWindowEnd = new Date(Date.now() + 55 * 60 * 1000);
+
     await context.prisma.booking.update({
       where: { id: createResponse.body.id },
       data: {
-        createdAt: new Date('2026-04-09T09:05:00.000Z'),
+        startAt: checkInWindowStart,
+        endAt: checkInWindowEnd,
+        createdAt: checkInWindowStart,
       },
     });
 
