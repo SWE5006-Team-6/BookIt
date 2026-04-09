@@ -13,8 +13,6 @@ describe('Booking lifecycle integration', () => {
   });
 
   beforeEach(async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(frozenNow);
     await resetDatabase(context.prisma);
     await seedTestUsers(context.prisma);
   });
@@ -30,6 +28,9 @@ describe('Booking lifecycle integration', () => {
   });
 
   it('creates a booking and checks it in through the HTTP API', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(frozenNow);
+
     const room = await context.prisma.room.create({
       data: {
         name: 'Integration Room',
