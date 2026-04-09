@@ -13,7 +13,6 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
-import { useNavigate } from 'react-router';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import type {
@@ -187,7 +186,6 @@ function sortRows<T extends RoomUtilisationRow | RoomNoShowRow>(
 
 export function AdminReportsPage() {
   const { token } = useAuth();
-  const navigate = useNavigate();
   const currentMonth = getDefaultMonth();
   const [reportType, setReportType] = useState<ReportType>('rooms');
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
@@ -369,13 +367,6 @@ export function AdminReportsPage() {
             bg="white"
             borderColor="gray.200"
           />
-          <Button
-            variant="outline"
-            colorPalette="blue"
-            onClick={() => navigate('/admin/rooms')}
-          >
-            Room Management
-          </Button>
         </HStack>
       </HStack>
 
