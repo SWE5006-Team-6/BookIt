@@ -6,6 +6,7 @@ import { resetDatabase } from './support/reset-database';
 
 describe('Booking lifecycle integration', () => {
   let context: Awaited<ReturnType<typeof createIntegrationApp>>;
+  const frozenNow = Date.parse('2026-04-09T09:10:00.000Z');
 
   beforeAll(async () => {
     context = await createIntegrationApp();
@@ -13,7 +14,7 @@ describe('Booking lifecycle integration', () => {
 
   beforeEach(async () => {
     jest.useFakeTimers();
-    jest.setSystemTime(new Date('2026-04-09T09:10:00.000Z'));
+    jest.setSystemTime(frozenNow);
     await resetDatabase(context.prisma);
     await seedTestUsers(context.prisma);
   });

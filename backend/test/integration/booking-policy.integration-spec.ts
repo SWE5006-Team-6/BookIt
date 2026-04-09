@@ -4,8 +4,8 @@ import { authHeaders, seedTestUsers, TEST_USERS } from './support/test-users';
 import { resetDatabase } from './support/reset-database';
 
 const DEFAULT_POLICY_KEYS = [
-  'max_advance_days',
   'max_active_bookings_per_user',
+  'max_advance_days',
   'max_duration_minutes',
   'min_duration_minutes',
   'no_show_grace_minutes',
