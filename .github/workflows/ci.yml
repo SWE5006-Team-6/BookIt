@@ -30,6 +30,7 @@ jobs:
         env:
           VITE_API_URL: ${{ github.ref == 'refs/heads/main' && secrets.DEPLOY_API_URL || 'http://localhost:5173' }}
       - run: npm test
+      - run: npm run test:integration
 
       - name: Upload frontend build
         if: github.ref == 'refs/heads/main'
@@ -74,3 +75,40 @@ jobs:
             backend/package.json
             backend/package-lock.json
             backend/prisma
+
+  backend-integration:
+    name: Backend Integration (NestJS + Postgres)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bookit_integration
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bookit_integration"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bookit_integration
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/bookit_integration
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+      - run: npx prisma migrate deploy
+      - run: npm run test:integration

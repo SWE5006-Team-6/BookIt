@@ -1,0 +1,96 @@
+name: Performance SIT (k6)
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  backend-performance:
+    name: Backend Performance Baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bookit_performance
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bookit_performance"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bookit_performance
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/bookit_performance
+      NODE_ENV: test
+      PERFORMANCE_PORT: 3180
+      BASE_URL: http://127.0.0.1:3180/api
+      PERF_REPORT_MONTH: 2026-03
+      PERF_SEARCH_DATE: 2026-03-15
+      PERF_SEARCH_TIME: 10:00
+      PERF_ADMIN_ID: 11111111-1111-1111-1111-111111111111
+      PERF_ADMIN_EMAIL: admin.integration@bookit.test
+      PERF_ADMIN_ROLE: ADMIN
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - uses: grafana/setup-k6-action@v1
+
+      - run: npm ci
+      - run: npx prisma migrate deploy
+      - run: npm run test:performance:seed
+      - run: npm run build
+
+      - name: Start performance app
+        run: |
+          mkdir -p performance-results
+          nohup npm run start:performance:server > ../backend-performance.log 2>&1 &
+
+      - name: Wait for backend readiness
+        run: |
+          for i in {1..30}; do
+            if curl -fsS "http://127.0.0.1:${PERFORMANCE_PORT}/api" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat ../backend-performance.log || true
+          exit 1
+
+      - name: Run k6 baseline
+        run: npm run test:performance -- --summary-export ./performance-results/summary.json
+
+      - name: Upload performance summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-summary
+          path: backend/performance-results/summary.json
+          if-no-files-found: ignore
+
+      - name: Upload performance server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-server-log
+          path: backend-performance.log
+          if-no-files-found: ignore

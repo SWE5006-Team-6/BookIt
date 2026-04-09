@@ -16,6 +16,10 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
+    "test:integration": "jest --config ./test/jest-integration.json --runInBand",
+    "test:performance": "k6 run ./test/performance/sit-baseline.js",
+    "test:performance:seed": "ts-node ./test/performance/support/seed-performance.ts",
+    "start:performance:server": "ts-node ./test/performance/support/start-performance-app.ts",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "postinstall": "prisma generate"

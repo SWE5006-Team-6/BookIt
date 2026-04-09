@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:integration": "vitest run --config vite.integration.config.ts",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage"
   },
