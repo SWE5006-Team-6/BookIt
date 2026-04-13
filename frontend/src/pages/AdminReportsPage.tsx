@@ -321,8 +321,8 @@ export function AdminReportsPage() {
 
   return (
     <Stack gap="6">
-      <HStack justify="space-between" align="center" flexWrap="wrap">
-        <VStack align="start" gap="1">
+      <HStack justify="space-between" align="start" flexWrap="wrap" gap="4">
+        <VStack align="start" gap="1" flex="1" minW="0">
           <Heading size="lg" color="gray.800">
             {REPORT_CONFIG[reportType].title}
           </Heading>
@@ -330,7 +330,12 @@ export function AdminReportsPage() {
             {REPORT_CONFIG[reportType].description}
           </Text>
         </VStack>
-        <HStack gap="3" flexWrap="wrap">
+        <HStack
+          gap="3"
+          flexWrap={{ base: 'wrap', lg: 'nowrap' }}
+          align="center"
+          flexShrink={0}
+        >
           <HStack
             bg="white"
             borderWidth="1px"
@@ -363,7 +368,7 @@ export function AdminReportsPage() {
             onChange={(event) =>
               setSelectedMonth(clampMonth(event.target.value, currentMonth))
             }
-            maxW="180px"
+            w={{ base: '100%', lg: '180px' }}
             bg="white"
             borderColor="gray.200"
           />
