@@ -14,15 +14,6 @@ vi.mock('../../../src/contexts/AuthContext.tsx', () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-const mockNavigate = vi.fn();
-vi.mock('react-router', async () => {
-  const actual = await vi.importActual('react-router');
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
-
 describe('AdminReportsPage', () => {
   function getCurrentMonth() {
     const parts = new Intl.DateTimeFormat('en-CA', {
@@ -173,6 +164,21 @@ describe('AdminReportsPage', () => {
     return userEvent.setup();
   }
 
+  function getVisibleRoomNames() {
+    return screen
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => {
+        const firstCell = row.querySelector('td');
+        if (!firstCell) {
+          return null;
+        }
+
+        return within(firstCell).queryByText(/Alpha|Beta|Gamma/)?.textContent ?? null;
+      })
+      .filter((value): value is string => Boolean(value));
+  }
+
   it('renders room utilisation by default and keeps the existing summary/table content', async () => {
     renderWithProviders(<AdminReportsPage />);
     const currentMonth = getCurrentMonth();
@@ -185,6 +191,9 @@ describe('AdminReportsPage', () => {
     expect(screen.getByText('Alpha')).toBeInTheDocument();
     expect(screen.getByText('Beta')).toBeInTheDocument();
     expect(screen.getByText('4.0h checked-in usage')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /room management/i }),
+    ).not.toBeInTheDocument();
     expect(apiRequest).toHaveBeenCalledWith(`/reports/rooms?month=${currentMonth}`, {
       token: 'fake-token',
     });
@@ -293,6 +302,16 @@ describe('AdminReportsPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows the original error message when the API throws an Error', async () => {
+    vi.mocked(apiRequest).mockRejectedValueOnce(new Error('Report service unavailable'));
+
+    renderWithProviders(<AdminReportsPage />);
+
+    expect(
+      await screen.findByText('Report service unavailable'),
+    ).toBeInTheDocument();
+  });
+
   it('shows an empty state when there are no rooms', async () => {
     vi.mocked(apiRequest).mockResolvedValueOnce({
       ...roomReportPayload,
@@ -333,14 +352,21 @@ describe('AdminReportsPage', () => {
     expect(screen.getByText('No rooms match "zeta".')).toBeInTheDocument();
   });
 
-  it('navigates to room management from the header action', async () => {
+  it('resets the search term and returns to room utilisation after switching reports', async () => {
     const user = createUser();
     renderWithProviders(<AdminReportsPage />);
 
     await screen.findByText('Alpha');
-    await user.click(screen.getByRole('button', { name: /room management/i }));
+    await user.type(screen.getByLabelText('Search room name'), 'bet');
+    await user.click(screen.getByRole('button', { name: 'No-Show' }));
+    await screen.findByText('Room No-Show Report');
 
-    expect(mockNavigate).toHaveBeenCalledWith('/admin/rooms');
+    expect(screen.getByLabelText('Search room name')).toHaveValue('');
+
+    await user.click(screen.getByRole('button', { name: 'Room Utilisation' }));
+
+    expect(await screen.findByText('Room Utilisation Report')).toBeInTheDocument();
+    expect(screen.getByLabelText('Search room name')).toHaveValue('');
   });
 
   it('sorts room utilisation rows by name when the header is clicked', async () => {
@@ -349,20 +375,7 @@ describe('AdminReportsPage', () => {
     await screen.findByText('Alpha');
     fireEvent.click(screen.getByRole('button', { name: /^Room$/i }));
 
-    const roomNames = screen
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => {
-        const firstCell = row.querySelector('td');
-        if (!firstCell) {
-          return null;
-        }
-        const nameNode = within(firstCell).queryByText(/Alpha|Beta|Gamma/);
-        return nameNode?.textContent ?? null;
-      })
-      .filter((value): value is string => Boolean(value));
-
-    expect(roomNames).toEqual(['Alpha', 'Beta', 'Gamma']);
+    expect(getVisibleRoomNames()).toEqual(['Alpha', 'Beta', 'Gamma']);
   });
 
   it('toggles sort direction in the no-show view', async () => {
@@ -377,20 +390,134 @@ describe('AdminReportsPage', () => {
     fireEvent.click(roomHeader);
     fireEvent.click(roomHeader);
 
-    const roomNames = screen
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => {
-        const firstCell = row.querySelector('td');
-        if (!firstCell) {
-          return null;
-        }
-        const nameNode = within(firstCell).queryByText(/Alpha|Beta|Gamma/);
-        return nameNode?.textContent ?? null;
-      })
-      .filter((value): value is string => Boolean(value));
+    expect(getVisibleRoomNames()).toEqual(['Gamma', 'Beta', 'Alpha']);
+  });
 
-    expect(roomNames).toEqual(['Gamma', 'Beta', 'Alpha']);
+  it('supports sorting across the room and no-show table columns', async () => {
+    const user = createUser();
+    vi.mocked(apiRequest).mockImplementation((url) => {
+      if (typeof url === 'string' && url.startsWith('/reports/no-shows')) {
+        return Promise.resolve({
+          ...noShowReportPayload,
+          rooms: [
+            {
+              ...noShowReportPayload.rooms[0],
+              location: 'L2',
+              bookingCount: 5,
+              releasedCount: 1,
+              noShowRatePct: 10,
+            },
+            {
+              ...noShowReportPayload.rooms[1],
+              location: null,
+              bookingCount: 3,
+              releasedCount: 2,
+              noShowRatePct: 66.7,
+            },
+            {
+              ...noShowReportPayload.rooms[2],
+              location: 'L3',
+              bookingCount: 2,
+              releasedCount: 4,
+              noShowRatePct: 50,
+            },
+          ],
+        } as any);
+      }
+
+      return Promise.resolve({
+        ...roomReportPayload,
+        rooms: [
+          {
+            ...roomReportPayload.rooms[0],
+            location: 'L2',
+            bookingCount: 5,
+            checkedInCount: 4,
+            releasedCount: 1,
+            releaseRatePct: 20,
+            utilisationPct: 34.5,
+          },
+          {
+            ...roomReportPayload.rooms[1],
+            location: null,
+            bookingCount: 3,
+            checkedInCount: 1,
+            releasedCount: 3,
+            releaseRatePct: 75,
+            utilisationPct: 18,
+          },
+          {
+            ...roomReportPayload.rooms[2],
+            location: 'L3',
+            bookingCount: 7,
+            checkedInCount: 2,
+            releasedCount: 2,
+            releaseRatePct: 28,
+            utilisationPct: 45,
+          },
+        ],
+      } as any);
+    });
+
+    renderWithProviders(<AdminReportsPage />);
+
+    await screen.findByText('Alpha');
+
+    await user.click(screen.getByRole('button', { name: /^Location$/i }));
+    await user.click(screen.getByRole('button', { name: /^Location$/i }));
+    expect(getVisibleRoomNames()).toEqual(['Beta', 'Alpha', 'Gamma']);
+
+    await user.click(screen.getByRole('button', { name: /^Seats$/i }));
+    expect(getVisibleRoomNames()).toEqual(['Gamma', 'Alpha', 'Beta']);
+
+    await user.click(screen.getByRole('button', { name: /^Room Status$/i }));
+    expect(getVisibleRoomNames()).toEqual(['Gamma', 'Beta', 'Alpha']);
+
+    await user.click(screen.getByRole('button', { name: /^Bookings$/i }));
+    expect(getVisibleRoomNames()).toEqual(['Gamma', 'Alpha', 'Beta']);
+
+    await user.click(screen.getByRole('button', { name: /^Used$/i }));
+    expect(getVisibleRoomNames()).toEqual(['Alpha', 'Gamma', 'Beta']);
+
+    await user.click(screen.getByRole('button', { name: /^Released$/i }));
+    expect(getVisibleRoomNames()).toEqual(['Beta', 'Gamma', 'Alpha']);
+
+    await user.click(screen.getByRole('button', { name: /^Release Rate$/i }));
+    expect(getVisibleRoomNames()).toEqual(['Beta', 'Gamma', 'Alpha']);
+
+    await user.click(screen.getByRole('button', { name: 'No-Show' }));
+    await screen.findByText('Room No-Show Report');
+
+    await user.click(screen.getByRole('button', { name: /^Location$/i }));
+    await user.click(screen.getByRole('button', { name: /^Location$/i }));
+    expect(getVisibleRoomNames()).toEqual(['Beta', 'Alpha', 'Gamma']);
+
+    await user.click(screen.getByRole('button', { name: /^Seats$/i }));
+    expect(getVisibleRoomNames()).toEqual(['Gamma', 'Alpha', 'Beta']);
+
+    await user.click(screen.getByRole('button', { name: /^Room Status$/i }));
+    expect(getVisibleRoomNames()).toEqual(['Gamma', 'Beta', 'Alpha']);
+
+    await user.click(screen.getByRole('button', { name: /^Bookings$/i }));
+    expect(getVisibleRoomNames()).toEqual(['Alpha', 'Beta', 'Gamma']);
+
+    await user.click(screen.getByRole('button', { name: /^No-Shows$/i }));
+    expect(getVisibleRoomNames()).toEqual(['Gamma', 'Beta', 'Alpha']);
+  });
+
+  it('sends an undefined token when auth is missing one', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 'admin-1', role: 'ADMIN' },
+      token: null,
+    });
+
+    renderWithProviders(<AdminReportsPage />);
+
+    expect(await screen.findByText('Room Utilisation Report')).toBeInTheDocument();
+    expect(apiRequest).toHaveBeenCalledWith(
+      `/reports/rooms?month=${getCurrentMonth()}`,
+      { token: undefined },
+    );
   });
 
   it('renders risk styling branches for both utilisation and no-show rates', async () => {
