@@ -87,6 +87,14 @@ jobs:
           path: backend/performance-results/summary.json
           if-no-files-found: ignore
 
+      - name: Upload performance manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-manifest
+          path: backend/test/performance/generated/manifest.json
+          if-no-files-found: ignore
+
       - name: Upload performance server log
         if: always()
         uses: actions/upload-artifact@v4
