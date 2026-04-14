@@ -54,19 +54,38 @@ jobs:
               per_page: 100,
             });
 
-            const successRun = runs.data.workflow_runs.find(
-              (run) => run.conclusion === 'success',
-            );
+            const workflowRuns = runs.data.workflow_runs;
 
-            if (!successRun) {
+            if (workflowRuns.length === 0) {
               core.setFailed(
-                `No successful DAST run found for commit ${targetSha}. Promote only commits that completed staging deployment and DAST.`,
+                `No completed DAST run found for commit ${targetSha}. Promote only commits that completed staging deployment and DAST.`,
+              );
+              return;
+            }
+
+            const latestRun = workflowRuns.reduce((latest, run) => {
+              if (!latest) {
+                return run;
+              }
+
+              if (run.run_number !== latest.run_number) {
+                return run.run_number > latest.run_number ? run : latest;
+              }
+
+              return new Date(run.created_at) > new Date(latest.created_at)
+                ? run
+                : latest;
+            }, null);
+
+            if (latestRun.conclusion !== 'success') {
+              core.setFailed(
+                `Latest completed DAST run ${latestRun.id} for commit ${targetSha} concluded with '${latestRun.conclusion}'. Promote only commits whose most recent completed DAST run succeeded.`,
               );
               return;
             }
 
             core.info(
-              `Validated staging DAST run ${successRun.id} for commit ${targetSha}.`,
+              `Validated latest staging DAST run ${latestRun.id} for commit ${targetSha}.`,
             );
 
   deploy:
