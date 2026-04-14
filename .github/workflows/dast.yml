@@ -2,7 +2,7 @@ name: DAST (OWASP ZAP)
 
 on:
   workflow_run:
-    workflows: ["Deploy to EC2"]
+    workflows: ["Deploy to Staging"]
     types: [completed]
     branches: [main]
 
@@ -11,6 +11,7 @@ jobs:
     name: OWASP ZAP Baseline Scan
     runs-on: ubuntu-latest
     if: github.event.workflow_run.conclusion == 'success'
+    environment: Staging
     steps:
       - uses: actions/checkout@v4
 
