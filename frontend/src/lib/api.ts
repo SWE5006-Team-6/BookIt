@@ -1,12 +1,16 @@
-// At build time: VITE_API_URL or DEPLOY_API_URL (in CI/CD). Fallback for deploy: same host, API on 5173.
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  (typeof window !== 'undefined'
+// At build time: VITE_API_URL or DEPLOY_API_URL (in CI/CD).
+// If VITE_API_URL omits /api (e.g. https://host:5173), append it.
+// If VITE_API_URL already includes /api (e.g. /stg/api), keep it as-is.
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+const defaultApiOrigin =
+  typeof window !== 'undefined'
     ? `${window.location.protocol}//${window.location.hostname}:5173`
-    : 'http://localhost:5173');
-
-/** Base URL without trailing slash so joining with "/auth/login" never produces "//auth/login". */
-const API_BASE = `${API_URL.replace(/\/$/, '')}/api`;
+    : 'http://localhost:5173';
+const rawApiBase = configuredApiUrl || defaultApiOrigin;
+const normalizedApiBase = rawApiBase.replace(/\/+$/, '');
+const API_BASE = normalizedApiBase.endsWith('/api')
+  ? normalizedApiBase
+  : `${normalizedApiBase}/api`;
 
 interface ApiOptions {
   method?: string;

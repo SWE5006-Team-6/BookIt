@@ -5,6 +5,7 @@ import { configDefaults } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: process.env.VITE_BASE_PATH?.trim() || '/',
   plugins: [react()],
   test: {
     globals: true,
