@@ -25,7 +25,7 @@ jobs:
         env:
           TARGET_SHA: ${{ inputs.sha }}
         run: |
-          git fetch origin main --depth=1
+          git fetch origin main
 
           git cat-file -e "$TARGET_SHA^{commit}" 2>/dev/null || {
             echo "Commit $TARGET_SHA was not found."
