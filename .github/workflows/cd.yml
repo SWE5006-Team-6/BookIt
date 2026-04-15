@@ -1,6 +1,21 @@
-name: Deploy to Staging
+name: Deploy
 
 on:
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Deploy target environment
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+      ref:
+        description: Branch, tag, or SHA to deploy
+        required: true
+        type: string
+        default: main
   workflow_run:
     workflows: ["Performance SIT (k6)"]
     types:
@@ -9,10 +24,10 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to Staging
+    name: Deploy
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success'
-    environment: Staging
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'staging' }}
     permissions:
       actions: read
       contents: read
@@ -23,7 +38,7 @@ jobs:
       - name: Checkout at validated commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.ref }}
 
       - name: Setup Node (backend)
         uses: actions/setup-node@v4
@@ -37,6 +52,8 @@ jobs:
           cd backend
           npm ci
           npm run build
+          npm prune --omit=dev
+          npx --yes prisma generate
 
       - name: Setup Node (frontend)
         uses: actions/setup-node@v4
@@ -50,8 +67,10 @@ jobs:
           cd frontend
           npm ci
           npm run build
+          npm prune --omit=dev
         env:
           VITE_API_URL: ${{ secrets.DEPLOY_API_URL }}
+          VITE_BASE_PATH: ${{ secrets.VITE_BASE_PATH || '/' }}
 
       - name: Setup SSH key
         run: |
@@ -63,16 +82,16 @@ jobs:
       - name: Copy backend to EC2
         run: |
           rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            backend/dist backend/package.json backend/package-lock.json backend/prisma \
+            backend/dist backend/node_modules backend/package.json backend/package-lock.json backend/prisma \
             $EC2_USER@$EC2_HOST:~/BookIt/backend/
 
       - name: Copy frontend to EC2
         run: |
           rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            frontend/dist frontend/package.json frontend/package-lock.json \
+            frontend/dist frontend/node_modules frontend/package.json frontend/package-lock.json \
             $EC2_USER@$EC2_HOST:~/BookIt/frontend/
 
-      - name: Install deps and restart on EC2
+      - name: Restart services on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -95,13 +114,10 @@ jobs:
             nvm use default
 
             cd ~/BookIt/backend
-            npm ci --omit=dev
-            npx --yes prisma generate
             pm2 delete bookit-api 2>/dev/null || true
             CORS_ORIGIN="${{ secrets.CORS_ORIGIN }}" PORT=5173 pm2 start dist/src/main.js --name bookit-api
 
             cd ~/BookIt/frontend
-            npm ci --omit=dev
             pm2 delete bookit-frontend 2>/dev/null || true
             pm2 start "npx serve dist -l 3000" --name bookit-frontend
 

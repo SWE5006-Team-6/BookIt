@@ -6,9 +6,15 @@ import { system } from './theme.ts';
 import { AuthProvider } from './contexts/AuthContext.tsx';
 import App from './App.tsx';
 
+const basePath = import.meta.env.VITE_BASE_PATH?.trim();
+const routerBasename =
+  basePath && basePath !== '/'
+    ? basePath.replace(/\/$/, '')
+    : undefined;
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={routerBasename}>
       <ChakraProvider value={system}>
         <AuthProvider>
           <App />
