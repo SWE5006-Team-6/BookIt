@@ -2,7 +2,7 @@ name: DAST (OWASP ZAP)
 
 on:
   workflow_run:
-    workflows: ["Deploy to Staging"]
+    workflows: ["Deploy"]
     types: [completed]
     branches: [main]
 
