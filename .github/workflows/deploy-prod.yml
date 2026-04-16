@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       sha:
-        description: Optional commit SHA. Leave blank to auto-select latest successful staging+DAST candidate on main.
+        description: Optional commit SHA. Leave blank to auto-select the latest commit on main that passed local perf, hosted staging perf, and DAST.
         required: false
         type: string
 
@@ -50,7 +50,7 @@ jobs:
 
             if (successful.length === 0) {
               core.setFailed(
-                'No successful DAST runs found on main. Run staging deploy + DAST first, or provide a SHA manually.',
+                'No successful DAST runs found on main. Run local perf, staging deploy, hosted staging perf, and DAST first, or provide a SHA manually.',
               );
               return;
             }
@@ -89,7 +89,7 @@ jobs:
           echo "Resolved commit to full SHA: $FULL_SHA"
           echo "target_sha=$FULL_SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Verify staging DAST passed for the requested commit
+      - name: Verify staging validation gates passed for the requested commit
         uses: actions/github-script@v7
         env:
           TARGET_SHA: ${{ steps.verify_main.outputs.target_sha }}
@@ -97,48 +97,65 @@ jobs:
           script: |
             const targetSha = process.env.TARGET_SHA;
             const { owner, repo } = context.repo;
-            const runs = await github.rest.actions.listWorkflowRuns({
-              owner,
-              repo,
-              workflow_id: 'dast.yml',
-              head_sha: targetSha,
-              status: 'completed',
-              per_page: 100,
-            });
+            const requiredWorkflows = [
+              {
+                workflow_id: 'performance-sit.yml',
+                label: 'local Performance SIT (k6)',
+              },
+              {
+                workflow_id: 'performance-staging.yml',
+                label: 'hosted staging performance',
+              },
+              {
+                workflow_id: 'dast.yml',
+                label: 'staging DAST',
+              },
+            ];
 
-            const workflowRuns = runs.data.workflow_runs;
+            for (const workflow of requiredWorkflows) {
+              const runs = await github.rest.actions.listWorkflowRuns({
+                owner,
+                repo,
+                workflow_id: workflow.workflow_id,
+                head_sha: targetSha,
+                status: 'completed',
+                per_page: 100,
+              });
 
-            if (workflowRuns.length === 0) {
-              core.setFailed(
-                `No completed DAST run found for commit ${targetSha}. Promote only commits that completed staging deployment and DAST.`,
-              );
-              return;
-            }
+              const workflowRuns = runs.data.workflow_runs;
 
-            const latestRun = workflowRuns.reduce((latest, run) => {
-              if (!latest) {
-                return run;
+              if (workflowRuns.length === 0) {
+                core.setFailed(
+                  `No completed ${workflow.label} run found for commit ${targetSha}. Promote only commits that passed local perf, hosted staging perf, and DAST.`,
+                );
+                return;
               }
 
-              if (run.run_number !== latest.run_number) {
-                return run.run_number > latest.run_number ? run : latest;
+              const latestRun = workflowRuns.reduce((latest, run) => {
+                if (!latest) {
+                  return run;
+                }
+
+                if (run.run_number !== latest.run_number) {
+                  return run.run_number > latest.run_number ? run : latest;
+                }
+
+                return new Date(run.created_at) > new Date(latest.created_at)
+                  ? run
+                  : latest;
+              }, null);
+
+              if (latestRun.conclusion !== 'success') {
+                core.setFailed(
+                  `Latest completed ${workflow.label} run ${latestRun.id} for commit ${targetSha} concluded with '${latestRun.conclusion}'.`,
+                );
+                return;
               }
 
-              return new Date(run.created_at) > new Date(latest.created_at)
-                ? run
-                : latest;
-            }, null);
-
-            if (latestRun.conclusion !== 'success') {
-              core.setFailed(
-                `Latest completed DAST run ${latestRun.id} for commit ${targetSha} concluded with '${latestRun.conclusion}'. Promote only commits whose most recent completed DAST run succeeded.`,
+              core.info(
+                `Validated latest ${workflow.label} run ${latestRun.id} for commit ${targetSha}.`,
               );
-              return;
             }
-
-            core.info(
-              `Validated latest staging DAST run ${latestRun.id} for commit ${targetSha}.`,
-            );
 
   deploy:
     name: Deploy to Production

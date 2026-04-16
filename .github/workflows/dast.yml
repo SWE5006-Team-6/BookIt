@@ -2,7 +2,7 @@ name: DAST (OWASP ZAP)
 
 on:
   workflow_run:
-    workflows: ["Deploy"]
+    workflows: ["Performance Staging (Hosted)"]
     types: [completed]
     branches: [main]
 
@@ -18,7 +18,7 @@ jobs:
       - name: ZAP Baseline Scan - Frontend
         uses: zaproxy/action-baseline@v0.14.0
         with:
-          target: "http://${{ secrets.EC2_HOST }}:3000"
+          target: "${{ secrets.CORS_ORIGIN }}"
           rules_file_name: ".zap/rules.tsv"
           allow_issue_writing: false
           fail_action: false
@@ -27,7 +27,7 @@ jobs:
       - name: ZAP Baseline Scan - Backend API
         uses: zaproxy/action-baseline@v0.14.0
         with:
-          target: "http://${{ secrets.EC2_HOST }}:5173"
+          target: "${{ secrets.DEPLOY_API_URL }}/api"
           rules_file_name: ".zap/rules.tsv"
           allow_issue_writing: false
           fail_action: false
