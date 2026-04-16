@@ -3,9 +3,11 @@ import type { Booking } from '../src/types/room.types';
 import {
   buildEndSlotOptions,
   buildStartSlotOptions,
+  combineDateAndTime,
   getInitialBookingDate,
   getMaxDateInputValue,
   DEFAULT_BOOKING_UI_CONSTRAINTS,
+  toDateInputValue,
 } from '../src/lib/booking-slots';
 
 function makeBooking(startAt: string, endAt: string): Booking {
@@ -60,7 +62,7 @@ describe('booking-slots', () => {
         ...DEFAULT_BOOKING_UI_CONSTRAINTS,
         minAdvanceMinutes: 30,
       },
-      now: new Date('2099-01-01T08:10:00'),
+      now: new Date('2099-01-01T00:10:00.000Z'),
     });
 
     expect(slots.find((s) => s.time === '08:00')?.disabled).toBe(true);
@@ -157,12 +159,17 @@ describe('booking-slots', () => {
   });
 
   it('applies max advance date and initial booking date helpers', () => {
-    const now = new Date('2099-01-01T08:00:00');
+    const now = new Date('2098-12-31T16:00:00.000Z');
     expect(getInitialBookingDate(DEFAULT_BOOKING_UI_CONSTRAINTS, now)).toBe('2099-01-01');
     expect(getMaxDateInputValue(DEFAULT_BOOKING_UI_CONSTRAINTS, now)).toBe('2099-01-15');
     expect(
       getMaxDateInputValue({ ...DEFAULT_BOOKING_UI_CONSTRAINTS, maxAdvanceDays: null }, now),
     ).toBeUndefined();
+  });
+
+  it('converts booking selections and displayed dates using Singapore business time', () => {
+    expect(combineDateAndTime('2099-01-01', '10:00')).toBe('2099-01-01T02:00:00.000Z');
+    expect(toDateInputValue(new Date('2098-12-31T16:00:00.000Z'))).toBe('2099-01-01');
   });
 
   it('ignores invalid booking intervals and still allows end slot selection', () => {
@@ -185,7 +192,7 @@ describe('booking-slots', () => {
         ...DEFAULT_BOOKING_UI_CONSTRAINTS,
         maxAdvanceDays: 1,
       },
-      now: new Date('2099-01-01T08:00:00'),
+      now: new Date('2098-12-31T16:00:00.000Z'),
     });
 
     expect(slots.every((slot) => slot.disabled)).toBe(true);

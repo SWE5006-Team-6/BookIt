@@ -1,4 +1,9 @@
 import type { Booking } from '../types/room.types';
+import {
+  createSingaporeDate,
+  getSingaporeParts,
+  parseSingaporeDateTime,
+} from './singapore-time';
 
 export const SLOT_INTERVAL_MINUTES = 30;
 export const WORKDAY_START_MINUTES = 8 * 60;
@@ -47,14 +52,15 @@ export function formatTimeLabel(time: string) {
 }
 
 export function toDateInputValue(date: Date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
-  const day = `${date.getDate()}`.padStart(2, '0');
+  const singapore = getSingaporeParts(date);
+  const year = singapore.year;
+  const month = `${singapore.monthIndex + 1}`.padStart(2, '0');
+  const day = `${singapore.day}`.padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
 export function combineDateAndTime(selectedDate: string, time: string) {
-  return `${selectedDate}T${time}`;
+  return toSlotDate(selectedDate, time).toISOString();
 }
 
 export function getMaxDateInputValue(
@@ -62,8 +68,12 @@ export function getMaxDateInputValue(
   now = new Date(),
 ) {
   if (constraints.maxAdvanceDays == null) return undefined;
-  const maxDate = new Date(now);
-  maxDate.setDate(maxDate.getDate() + constraints.maxAdvanceDays);
+  const singapore = getSingaporeParts(now);
+  const maxDate = createSingaporeDate(
+    singapore.year,
+    singapore.monthIndex,
+    singapore.day + constraints.maxAdvanceDays,
+  );
   return toDateInputValue(maxDate);
 }
 
@@ -210,7 +220,8 @@ function hasAnyValidEnd(
   minDurationMinutes: number,
   maxDurationMinutes: number | null,
 ) {
-  const startMinutes = startAt.getHours() * 60 + startAt.getMinutes();
+  const startParts = getSingaporeParts(startAt);
+  const startMinutes = startParts.hour * 60 + startParts.minute;
   const earliestEnd = startMinutes + minDurationMinutes;
   const latestEndByDay = WORKDAY_END_MINUTES;
   const latestEndByDuration = maxDurationMinutes == null
@@ -234,8 +245,8 @@ function hasAnyValidEnd(
 function parseIntervals(bookings: Booking[]): ParsedInterval[] {
   return bookings
     .map((booking) => ({
-      startAt: new Date(booking.startAt),
-      endAt: new Date(booking.endAt),
+      startAt: parseSingaporeDateTime(booking.startAt),
+      endAt: parseSingaporeDateTime(booking.endAt),
     }))
     .filter(
       (interval) =>
@@ -256,13 +267,27 @@ function rangeOverlapsAny(startAt: Date, endAt: Date, intervals: ParsedInterval[
 }
 
 function toSlotDate(selectedDate: string, time: string) {
-  return new Date(combineDateAndTime(selectedDate, time));
+  const [yearRaw, monthRaw, dayRaw] = selectedDate.split('-');
+  const [hourRaw, minuteRaw] = time.split(':');
+
+  return createSingaporeDate(
+    Number(yearRaw),
+    Number(monthRaw) - 1,
+    Number(dayRaw),
+    Number(hourRaw),
+    Number(minuteRaw),
+  );
 }
 
 function withMinutesOfDay(date: Date, minutesOfDay: number) {
-  const next = new Date(date);
-  next.setHours(Math.floor(minutesOfDay / 60), minutesOfDay % 60, 0, 0);
-  return next;
+  const singapore = getSingaporeParts(date);
+  return createSingaporeDate(
+    singapore.year,
+    singapore.monthIndex,
+    singapore.day,
+    Math.floor(minutesOfDay / 60),
+    minutesOfDay % 60,
+  );
 }
 
 function minutesToTime(totalMinutes: number) {

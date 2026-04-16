@@ -44,6 +44,8 @@ describe('BookingService', () => {
     sendBookingReleasedEmail: jest.Mock;
   };
 
+  const singaporeInstant = (value: string) => new Date(`${value}+08:00`);
+
   const activeRoom = {
     id: 'room-1',
     name: 'Room A',
@@ -70,8 +72,8 @@ describe('BookingService', () => {
     roomId: 'room-1',
     bookedById: 'user-1',
     title: 'Planning',
-    startAt: new Date('2099-01-01T09:00:00'),
-    endAt: new Date('2099-01-01T10:00:00'),
+    startAt: singaporeInstant('2099-01-01T09:00:00'),
+    endAt: singaporeInstant('2099-01-01T10:00:00'),
     status: BookingStatus.CONFIRMED,
     cancelReason: null,
     checkedInAt: null,
@@ -245,15 +247,19 @@ describe('BookingService', () => {
 
       expect(prisma.room.findUnique).toHaveBeenCalledWith({ where: { id: 'room-1' } });
       expect(policyChain.validate).toHaveBeenCalled();
-      expect(bookingRepository.checkAvailability).toHaveBeenCalled();
+      expect(bookingRepository.checkAvailability).toHaveBeenCalledWith(
+        'room-1',
+        singaporeInstant('2099-01-01T09:00:00'),
+        singaporeInstant('2099-01-01T10:00:00'),
+      );
       expect(bookingRepository.create).toHaveBeenCalled();
       expect(notificationService.sendBookingConfirmedEmail).toHaveBeenCalledWith({
         email: 'user@example.com',
         name: 'User Name',
         roomName: 'Room A',
         title: 'Planning',
-        startAt: new Date('2099-01-01T09:00:00'),
-        endAt: new Date('2099-01-01T10:00:00'),
+        startAt: singaporeInstant('2099-01-01T09:00:00'),
+        endAt: singaporeInstant('2099-01-01T10:00:00'),
         cancelReason: undefined,
       });
     });
@@ -274,6 +280,22 @@ describe('BookingService', () => {
       );
       expect(result.status).toBe(BookingStatus.CANCELLED);
       expect(notificationService.sendBookingConfirmedEmail).not.toHaveBeenCalled();
+    });
+
+    it('treats timezone-naive booking inputs as Singapore local time', async () => {
+      await createBooking({
+        roomId: 'room-1',
+        title: 'Singapore time',
+        startAt: '2099-01-01T10:00:00',
+        endAt: '2099-01-01T10:30:00',
+      });
+
+      expect(bookingRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          startAt: new Date('2099-01-01T02:00:00.000Z'),
+          endAt: new Date('2099-01-01T02:30:00.000Z'),
+        }),
+      );
     });
 
     it('skips notification when booking user email is missing', async () => {
@@ -500,8 +522,8 @@ describe('BookingService', () => {
 
       expect(bookingRepository.checkAvailability).toHaveBeenCalledWith(
         'room-1',
-        new Date('2099-01-01T10:00:00'),
-        new Date('2099-01-01T11:00:00'),
+        singaporeInstant('2099-01-01T10:00:00'),
+        singaporeInstant('2099-01-01T11:00:00'),
       );
     });
 

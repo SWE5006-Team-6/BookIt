@@ -109,7 +109,7 @@ describe('RoomsService', () => {
       await service.searchAvailableRooms(dto as any);
 
       expect(roomsRepo.searchAvailableRooms).toHaveBeenCalledWith({
-        dateTime: new Date('2026-02-10T10:30:00'),
+        dateTime: new Date('2026-02-10T02:30:00.000Z'),
         capacity: 1,
       });
     });
@@ -121,7 +121,7 @@ describe('RoomsService', () => {
       await service.searchAvailableRooms(dto as any);
 
       expect(roomsRepo.searchAvailableRooms).toHaveBeenCalledWith({
-        dateTime: new Date('2026-02-10T10:30:00'),
+        dateTime: new Date('2026-02-10T02:30:00.000Z'),
         capacity: 4,
       });
     });

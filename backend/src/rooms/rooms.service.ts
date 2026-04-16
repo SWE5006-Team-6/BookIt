@@ -13,6 +13,7 @@ import {
 } from './dto/update-room-status.dto';
 import { RoomStateFactory } from './state/room-state.factory';
 import { RoomValidatorService } from './validation/room-validator.service';
+import { parseSingaporeDateAndTime } from '../common/time/singapore-time';
 
 @Injectable()
 export class RoomsService {
@@ -39,7 +40,7 @@ export class RoomsService {
   }
 
   async searchAvailableRooms(dto: SearchRoomsDto) {
-    const dateTime = new Date(`${dto.date}T${dto.time}:00`);
+    const dateTime = parseSingaporeDateAndTime(dto.date, dto.time);
     const capacity = dto.capacity ?? 1;
 
     if (Number.isNaN(dateTime.getTime())) {
