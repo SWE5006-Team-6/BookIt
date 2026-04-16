@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
   Box,
+  Dialog,
+  DialogBackdrop,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogPositioner,
+  DialogTitle,
   Flex,
   Heading,
   Icon,
@@ -19,6 +26,11 @@ import { FiSearch, FiUsers, FiMapPin, FiClock, FiCheckCircle, FiInfo, FiChevronU
 import type Room from '../types/Room';
 import { apiRequest } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
+import {
+  toUserFacingBookingPolicies,
+  type BookingPolicy,
+  type UserFacingBookingPolicy,
+} from '../lib/booking-policy-display';
 
 const RoomCard = ({ room }: { room: Room }) => {
   const isUnavailable = !room.isAvailable;
@@ -98,6 +110,10 @@ export default function RoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const { token, user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
+  const [isPolicyDialogOpen, setIsPolicyDialogOpen] = useState(false);
+  const [isPoliciesLoading, setIsPoliciesLoading] = useState(false);
+  const [policyError, setPolicyError] = useState<string | null>(null);
+  const [policyCards, setPolicyCards] = useState<UserFacingBookingPolicy[] | null>(null);
 
   const getMinDateTime = () => {
     const now = new Date();
@@ -123,6 +139,35 @@ export default function RoomsPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const loadBookingPolicies = async () => {
+    if (!token) {
+      setPolicyError('Sign in to view the current booking policies.');
+      return;
+    }
+
+    setIsPoliciesLoading(true);
+    setPolicyError(null);
+    try {
+      const data = await apiRequest<BookingPolicy[]>('/booking-policies', {
+        token: token ?? undefined,
+      });
+      setPolicyCards(toUserFacingBookingPolicies(data));
+    } catch (error) {
+      console.error('Failed to load booking policies:', error);
+      setPolicyError('Failed to load booking policies. Please try again.');
+    } finally {
+      setIsPoliciesLoading(false);
+    }
+  };
+
+  const openPolicyDialog = async () => {
+    setIsPolicyDialogOpen(true);
+    if (policyCards !== null || isPoliciesLoading) {
+      return;
+    }
+    await loadBookingPolicies();
   };
 
   const filteredRooms = rooms
@@ -203,7 +248,10 @@ export default function RoomsPage() {
           <Icon as={FiCheckCircle} color="green.500" />
           <Text fontWeight="bold">{filteredRooms.length} Rooms Found</Text>
         </HStack>
-        <Button variant="ghost" size="sm"><FiInfo /> Booking Policies</Button>
+        <Button variant="ghost" size="sm" onClick={openPolicyDialog}>
+          <FiInfo />
+          Booking Policies
+        </Button>
       </Flex>
 
       {filteredRooms.length === 0 ? (
@@ -228,6 +276,97 @@ export default function RoomsPage() {
           Return to top
         </Button>
       </Flex>
+
+      <Dialog.Root
+        open={isPolicyDialogOpen}
+        onOpenChange={(event) => setIsPolicyDialogOpen(event.open)}
+      >
+        <DialogBackdrop bg="blackAlpha.600" backdropFilter="blur(4px)" zIndex={1400} />
+        <DialogPositioner display="flex" alignItems="center" justifyContent="center" p="4" zIndex={1401}>
+          <DialogContent maxW="520px" bg="white" borderRadius="2xl" boxShadow="2xl" border="none" p="0" overflow="hidden">
+            <Box bg="#4F46E5" px="6" py="4">
+              <DialogTitle fontSize="lg" fontWeight="bold" color="white" margin="0">
+                Booking Policies
+              </DialogTitle>
+              <Text color="whiteAlpha.900" fontSize="sm" mt="1">
+                These rules explain what booking requests are allowed before you reserve a room.
+              </Text>
+            </Box>
+            <DialogBody p="6">
+              {isPoliciesLoading ? (
+                <Flex direction="column" align="center" justify="center" minH="180px" gap="3">
+                  <Spinner size="lg" color="#4F46E5" />
+                  <Text color="gray.600">Loading booking policies...</Text>
+                </Flex>
+              ) : policyError ? (
+                <Box
+                  p="4"
+                  borderRadius="xl"
+                  borderWidth="1px"
+                  borderColor="red.200"
+                  bg="red.50"
+                  color="red.700"
+                >
+                  <Text fontWeight="medium">{policyError}</Text>
+                  {token && (
+                    <Button
+                      mt="4"
+                      size="sm"
+                      bg="#4F46E5"
+                      color="white"
+                      _hover={{ bg: '#4338CA' }}
+                      onClick={loadBookingPolicies}
+                    >
+                      Retry
+                    </Button>
+                  )}
+                </Box>
+              ) : policyCards && policyCards.length > 0 ? (
+                <Stack gap="3">
+                  {policyCards.map((policy) => (
+                    <Box
+                      key={policy.key}
+                      p="4"
+                      borderRadius="xl"
+                      borderWidth="1px"
+                      borderColor="gray.200"
+                      bg="gray.50"
+                    >
+                      <Text fontWeight="semibold" color="gray.800">{policy.title}</Text>
+                      <Text fontSize="sm" color="gray.600" mt="1">{policy.summary}</Text>
+                      <Text fontSize="sm" color="#4F46E5" fontWeight="semibold" mt="3">
+                        {policy.detail}
+                      </Text>
+                    </Box>
+                  ))}
+                </Stack>
+              ) : (
+                <Box
+                  p="5"
+                  borderRadius="xl"
+                  borderWidth="1px"
+                  borderColor="gray.200"
+                  bg="gray.50"
+                >
+                  <Text fontWeight="medium" color="gray.700">No active booking policies to show.</Text>
+                  <Text fontSize="sm" color="gray.500" mt="1">
+                    Booking limits will appear here when active user-facing policies are available.
+                  </Text>
+                </Box>
+              )}
+            </DialogBody>
+            <DialogFooter p="6" pt="0">
+              <Button
+                variant="ghost"
+                color="gray.600"
+                onClick={() => setIsPolicyDialogOpen(false)}
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </DialogPositioner>
+      </Dialog.Root>
     </Box>
   );
 }
