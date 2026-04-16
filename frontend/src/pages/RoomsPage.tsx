@@ -5,6 +5,7 @@ import {
   Dialog,
   DialogBackdrop,
   DialogBody,
+  DialogCloseTrigger,
   DialogContent,
   DialogFooter,
   DialogPositioner,
@@ -282,17 +283,51 @@ export default function RoomsPage() {
         onOpenChange={(event) => setIsPolicyDialogOpen(event.open)}
       >
         <DialogBackdrop bg="blackAlpha.600" backdropFilter="blur(4px)" zIndex={1400} />
-        <DialogPositioner display="flex" alignItems="center" justifyContent="center" p="4" zIndex={1401}>
-          <DialogContent maxW="520px" bg="white" borderRadius="2xl" boxShadow="2xl" border="none" p="0" overflow="hidden">
-            <Box bg="#4F46E5" px="6" py="4">
+        <DialogPositioner
+          display="flex"
+          alignItems={{ base: 'flex-start', md: 'center' }}
+          justifyContent="center"
+          p="4"
+          pt={{ base: '6', md: '4' }}
+          pb={{ base: '6', md: '4' }}
+          overflowY="auto"
+          zIndex={1401}
+        >
+          <DialogContent
+            maxW="520px"
+            width="100%"
+            maxH="calc(100vh - 3rem)"
+            bg="white"
+            borderRadius="2xl"
+            boxShadow="2xl"
+            border="none"
+            p="0"
+            overflow="hidden"
+            display="flex"
+            flexDirection="column"
+          >
+            <Box bg="#4F46E5" px="6" py="4" position="relative" flexShrink={0}>
               <DialogTitle fontSize="lg" fontWeight="bold" color="white" margin="0">
                 Booking Policies
               </DialogTitle>
               <Text color="whiteAlpha.900" fontSize="sm" mt="1">
                 These rules explain what booking requests are allowed before you reserve a room.
               </Text>
+              <DialogCloseTrigger asChild>
+                <Button
+                  variant="ghost"
+                  position="absolute"
+                  right="2"
+                  top="2"
+                  color="white"
+                  _hover={{ bg: 'whiteAlpha.200' }}
+                  size="sm"
+                >
+                  x
+                </Button>
+              </DialogCloseTrigger>
             </Box>
-            <DialogBody p="6">
+            <DialogBody p="6" overflowY="auto" flex="1">
               {isPoliciesLoading ? (
                 <Flex direction="column" align="center" justify="center" minH="180px" gap="3">
                   <Spinner size="lg" color="#4F46E5" />
@@ -355,7 +390,7 @@ export default function RoomsPage() {
                 </Box>
               )}
             </DialogBody>
-            <DialogFooter p="6" pt="0">
+            <DialogFooter p="6" pt="4" borderTopWidth="1px" borderColor="gray.100" flexShrink={0}>
               <Button
                 variant="ghost"
                 color="gray.600"

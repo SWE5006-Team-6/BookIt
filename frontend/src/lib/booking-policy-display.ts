@@ -45,8 +45,10 @@ const POLICY_DEFINITIONS: Record<string, PolicyDefinition> = {
   },
   no_show_grace_minutes: {
     title: 'Check-in grace period',
-    summary: 'Late check-ins are only allowed for a short window after the booking starts.',
-    renderDetail: (value) => `Check in within ${formatMinutes(value)} of the start time`,
+    summary:
+      'Late check-ins are only allowed for a short window after the booking starts. If you book late, the grace window starts from the time you made the booking.',
+    renderDetail: (value) =>
+      `Check in within ${formatMinutes(value)} after your booking starts. If you booked late, your ${formatMinutes(value)} window starts from when you made the booking.`,
   },
 };
 
