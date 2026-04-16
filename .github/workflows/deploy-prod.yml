@@ -34,7 +34,7 @@ jobs:
               return;
             }
 
-            core.info('No SHA provided, selecting latest successful DAST run on main.');
+            core.info('No SHA provided, selecting latest successful OWASP ZAP (DAST) run on main.');
             const runs = await github.rest.actions.listWorkflowRuns({
               owner,
               repo,
@@ -50,7 +50,7 @@ jobs:
 
             if (successful.length === 0) {
               core.setFailed(
-                'No successful DAST runs found on main. Run local perf, staging deploy, hosted staging perf, and DAST first, or provide a SHA manually.',
+                'No successful OWASP ZAP (DAST) runs found on main. Run local perf, staging deploy, hosted staging perf, and DAST first, or provide a SHA manually.',
               );
               return;
             }
@@ -60,7 +60,7 @@ jobs:
               return new Date(run.created_at) > new Date(best.created_at) ? run : best;
             }, null);
 
-            core.info(`Auto-selected SHA ${latest.head_sha} from DAST run ${latest.id}.`);
+            core.info(`Auto-selected SHA ${latest.head_sha} from OWASP ZAP (DAST) run ${latest.id}.`);
             core.setOutput('target_sha', latest.head_sha);
 
       - name: Checkout repository history
@@ -99,8 +99,8 @@ jobs:
             const { owner, repo } = context.repo;
             const requiredWorkflows = [
               {
-                workflow_id: 'performance-sit.yml',
-                label: 'local Performance SIT (k6)',
+                workflow_id: 'cd.yml',
+                label: 'local Performance SIT + staging deploy',
               },
               {
                 workflow_id: 'performance-staging.yml',
@@ -108,7 +108,7 @@ jobs:
               },
               {
                 workflow_id: 'dast.yml',
-                label: 'staging DAST',
+                label: 'OWASP ZAP (DAST)',
               },
             ];
 
