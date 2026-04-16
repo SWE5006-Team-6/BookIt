@@ -21,6 +21,38 @@ describe('RoomsPage', () => {
     { id: '1', name: 'Conference Room A', capacity: 10, location: 'Level 2', isActive: true, isAvailable: true, reason: null },
     { id: '2', name: 'Quiet Pod', capacity: 1, location: 'Level 3', isActive: true, isAvailable: true, reason: null },
   ];
+  const mockPolicies = [
+    {
+      id: 'p1',
+      key: 'min_duration_minutes',
+      value: '30',
+      label: 'Minimum Booking Duration (minutes)',
+      description: 'The shortest allowed booking duration.',
+      isActive: true,
+      updatedBy: 'admin',
+      updatedAt: '2099-01-01T00:00:00Z',
+    },
+    {
+      id: 'p2',
+      key: 'max_active_bookings_per_user',
+      value: '5',
+      label: 'Maximum Active Bookings Per User',
+      description: 'The maximum number of active bookings.',
+      isActive: true,
+      updatedBy: 'admin',
+      updatedAt: '2099-01-01T00:00:00Z',
+    },
+    {
+      id: 'p3',
+      key: 'max_duration_minutes',
+      value: '120',
+      label: 'Maximum Booking Duration (minutes)',
+      description: 'The longest allowed booking duration.',
+      isActive: false,
+      updatedBy: 'admin',
+      updatedAt: '2099-01-01T00:00:00Z',
+    },
+  ];
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -95,6 +127,106 @@ describe('RoomsPage', () => {
       },
       { timeout: 3000 }
     );
+  });
+
+  it('shows booking policies in a dialog with user-friendly wording', async () => {
+    (apiRequest as any)
+      .mockResolvedValueOnce(mockRooms)
+      .mockResolvedValueOnce(mockPolicies);
+
+    const user = userEvent.setup();
+    renderWithProviders(<RoomsPage />);
+
+    await screen.findByText('Conference Room A');
+    await user.click(screen.getByRole('button', { name: /booking policies/i }));
+
+    expect(await screen.findByText(/minimum booking duration: 30 minutes/i)).toBeInTheDocument();
+    expect(screen.getByText(/up to 5 active bookings at one time/i)).toBeInTheDocument();
+    expect(screen.queryByText(/maximum booking duration/i)).not.toBeInTheDocument();
+    expect(apiRequest).toHaveBeenCalledWith(
+      '/booking-policies',
+      expect.objectContaining({ token: 'fake-token' }),
+    );
+  });
+
+  it('shows a loading state before booking policies resolve', async () => {
+    let resolvePolicies!: (value: typeof mockPolicies) => void;
+    const pendingPolicies = new Promise<typeof mockPolicies>((resolve) => {
+      resolvePolicies = resolve;
+    });
+    (apiRequest as any)
+      .mockResolvedValueOnce(mockRooms)
+      .mockReturnValueOnce(pendingPolicies);
+
+    const user = userEvent.setup();
+    renderWithProviders(<RoomsPage />);
+
+    await screen.findByText('Conference Room A');
+    await user.click(screen.getByRole('button', { name: /booking policies/i }));
+
+    expect(screen.getByText(/loading booking policies/i)).toBeInTheDocument();
+
+    resolvePolicies(mockPolicies);
+    expect(await screen.findByText(/minimum booking duration: 30 minutes/i)).toBeInTheDocument();
+  });
+
+  it('shows an empty-state message when no user-facing policies are available', async () => {
+    (apiRequest as any)
+      .mockResolvedValueOnce(mockRooms)
+      .mockResolvedValueOnce([
+        {
+          id: 'p4',
+          key: 'max_duration_minutes',
+          value: '120',
+          label: 'Maximum Booking Duration (minutes)',
+          description: 'The longest allowed booking duration.',
+          isActive: false,
+          updatedBy: 'admin',
+          updatedAt: '2099-01-01T00:00:00Z',
+        },
+      ]);
+
+    const user = userEvent.setup();
+    renderWithProviders(<RoomsPage />);
+
+    await screen.findByText('Conference Room A');
+    await user.click(screen.getByRole('button', { name: /booking policies/i }));
+
+    expect(await screen.findByText(/no active booking policies to show/i)).toBeInTheDocument();
+  });
+
+  it('shows retry state when booking policies fail to load', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    (apiRequest as any)
+      .mockResolvedValueOnce(mockRooms)
+      .mockRejectedValueOnce(new Error('policy load fail'))
+      .mockResolvedValueOnce(mockPolicies);
+
+    const user = userEvent.setup();
+    renderWithProviders(<RoomsPage />);
+
+    await screen.findByText('Conference Room A');
+    await user.click(screen.getByRole('button', { name: /booking policies/i }));
+    expect(await screen.findByText(/failed to load booking policies/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /retry/i }));
+    expect(await screen.findByText(/minimum booking duration: 30 minutes/i)).toBeInTheDocument();
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it('shows sign-in guidance instead of fetching booking policies for public users', async () => {
+    mockUseAuth.mockReturnValue({ token: null, user: null });
+    (apiRequest as any).mockResolvedValueOnce(mockRooms);
+
+    const user = userEvent.setup();
+    renderWithProviders(<RoomsPage />);
+
+    await screen.findByText('Conference Room A');
+    await user.click(screen.getByRole('button', { name: /booking policies/i }));
+
+    expect(await screen.findByText(/sign in to view the current booking policies/i)).toBeInTheDocument();
+    expect(apiRequest).toHaveBeenCalledTimes(1);
   });
 
   it('should render admin manage button when user is admin', async () => {
