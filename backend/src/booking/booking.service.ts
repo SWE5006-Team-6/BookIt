@@ -6,6 +6,7 @@ import {
   Logger,
   ForbiddenException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { BookingRepository } from './booking.repository';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
@@ -49,6 +50,7 @@ export class BookingService {
     private readonly policyChain: BookingPolicyChainService,
     private readonly bookingPolicyRepository: BookingPolicyRepository,
     private readonly notificationService: NotificationService,
+    private readonly configService: ConfigService,
   ) {}
 
   async findAll() {
@@ -312,6 +314,13 @@ export class BookingService {
     kind: 'confirmed' | 'cancelled' | 'released',
     booking: BookingNotificationSource,
   ) {
+    if (this.shouldSuppressPerfBookingEmail(booking.title)) {
+      this.logger.log(
+        `Skipping ${kind} email for perf booking ${booking.id} due to PERF email suppression`,
+      );
+      return;
+    }
+
     if (!booking.bookedBy.email) {
       this.logger.warn(
         `Skipping ${kind} email for booking ${booking.id}: user email is missing`,
@@ -353,6 +362,20 @@ export class BookingService {
       endAt: booking.endAt,
       cancelReason: booking.cancelReason ?? undefined,
     };
+  }
+
+  private shouldSuppressPerfBookingEmail(title: string) {
+    const suppressPerfEmails = this.configService.get<string>(
+      'SUPPRESS_PERF_BOOKING_EMAILS',
+    );
+    const perfPrefix = this.configService.get<string>('PERF_BOOKING_PREFIX');
+
+    return (
+      suppressPerfEmails === 'true' &&
+      typeof perfPrefix === 'string' &&
+      perfPrefix.length > 0 &&
+      title.startsWith(perfPrefix)
+    );
   }
 
   private async getBookingOrThrow(id: string) {

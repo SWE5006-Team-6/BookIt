@@ -1,16 +1,8 @@
-name: Deploy
+name: Deploy to Staging
 
 on:
   workflow_dispatch:
     inputs:
-      target_environment:
-        description: Deploy target environment
-        required: true
-        type: choice
-        options:
-          - staging
-          - production
-        default: staging
       ref:
         description: Branch, tag, or SHA to deploy
         required: true
@@ -24,10 +16,10 @@ on:
 
 jobs:
   deploy:
-    name: Deploy
+    name: Deploy to Staging
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
-    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.target_environment || 'staging' }}
+    environment: Staging
     permissions:
       actions: read
       contents: read
@@ -120,7 +112,7 @@ jobs:
 
             cd ~/BookIt/backend
             pm2 delete bookit-api 2>/dev/null || true
-            CORS_ORIGIN="${{ secrets.CORS_ORIGIN }}" PORT=5173 pm2 start dist/src/main.js --name bookit-api
+            SUPPRESS_PERF_BOOKING_EMAILS="true" PERF_BOOKING_PREFIX="${{ secrets.PERF_BOOKING_PREFIX }}" CORS_ORIGIN="${{ secrets.CORS_ORIGIN }}" PORT=5173 pm2 start dist/src/main.js --name bookit-api
 
             cd ~/BookIt/frontend
             pm2 delete bookit-frontend 2>/dev/null || true

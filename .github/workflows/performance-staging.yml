@@ -1,0 +1,72 @@
+name: Performance Staging (Hosted)
+
+on:
+  workflow_run:
+    workflows: ["Deploy to Staging"]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: performance-staging-hosted
+  cancel-in-progress: true
+
+jobs:
+  staging-performance:
+    name: Hosted Staging Performance Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event.workflow_run.conclusion == 'success'
+    environment: Staging
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      PERF_STAGING_BASE_URL: ${{ secrets.PERF_STAGING_BASE_URL }}
+      PERF_STAGING_ADMIN_EMAIL: ${{ secrets.PERF_STAGING_ADMIN_EMAIL }}
+      PERF_STAGING_ADMIN_PASSWORD: ${{ secrets.PERF_STAGING_ADMIN_PASSWORD }}
+      PERF_STAGING_USER_CREDENTIALS_JSON: ${{ secrets.PERF_STAGING_USER_CREDENTIALS_JSON }}
+      PERF_STAGING_ROOM_NAMES_JSON: ${{ secrets.PERF_STAGING_ROOM_NAMES_JSON }}
+      PERF_BOOKING_PREFIX: ${{ secrets.PERF_BOOKING_PREFIX }}
+      PERF_STAGING_RUN_ID: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - uses: grafana/setup-k6-action@v1
+
+      - run: npm ci
+
+      - name: Prepare hosted staging performance fixtures
+        run: npm run test:performance:staging:prepare
+
+      - run: mkdir -p performance-results
+
+      - name: Run hosted k6 smoke baseline
+        run: npm run test:performance:staging -- --summary-export ./performance-results/hosted-summary.json
+
+      - name: Cleanup hosted staging performance fixtures
+        if: always()
+        run: npm run test:performance:staging:cleanup
+
+      - name: Upload hosted performance summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hosted-performance-summary
+          path: backend/performance-results/hosted-summary.json
+          if-no-files-found: ignore
+
+      - name: Upload hosted performance manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hosted-performance-manifest
+          path: backend/test/performance/generated/hosted-manifest.json
+          if-no-files-found: ignore

@@ -4,6 +4,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BookingStatus, UserRole } from '@prisma/client';
 import { BookingRepository } from '../../../src/booking/booking.repository';
@@ -37,6 +38,9 @@ describe('BookingService', () => {
   };
   let bookingPolicyRepository: {
     findByKey: jest.Mock;
+  };
+  let configService: {
+    get: jest.Mock;
   };
   let notificationService: {
     sendBookingConfirmedEmail: jest.Mock;
@@ -152,6 +156,18 @@ describe('BookingService', () => {
       }),
     };
 
+    configService = {
+      get: jest.fn().mockImplementation((key: string) => {
+        if (key === 'SUPPRESS_PERF_BOOKING_EMAILS') {
+          return 'false';
+        }
+        if (key === 'PERF_BOOKING_PREFIX') {
+          return '[PERF]';
+        }
+        return undefined;
+      }),
+    };
+
     notificationService = {
       sendBookingConfirmedEmail: jest.fn().mockResolvedValue(undefined),
       sendBookingCancelledEmail: jest.fn().mockResolvedValue(undefined),
@@ -166,6 +182,7 @@ describe('BookingService', () => {
         { provide: BookingPolicyChainService, useValue: policyChain },
         { provide: BookingPolicyRepository, useValue: bookingPolicyRepository },
         { provide: NotificationService, useValue: notificationService },
+        { provide: ConfigService, useValue: configService },
       ],
     }).compile();
 
@@ -305,6 +322,30 @@ describe('BookingService', () => {
       });
 
       await createBooking();
+
+      expect(notificationService.sendBookingConfirmedEmail).not.toHaveBeenCalled();
+    });
+
+    it('skips notification for perf-tagged bookings when suppression is enabled', async () => {
+      configService.get.mockImplementation((key: string) => {
+        if (key === 'SUPPRESS_PERF_BOOKING_EMAILS') {
+          return 'true';
+        }
+        if (key === 'PERF_BOOKING_PREFIX') {
+          return '[PERF]';
+        }
+        return undefined;
+      });
+
+      bookingRepository.create.mockResolvedValue({
+        ...createdBooking,
+        title: '[PERF][run-123] create 1',
+      });
+
+      await createBooking({
+        ...validCreateDto,
+        title: '[PERF][run-123] create 1',
+      });
 
       expect(notificationService.sendBookingConfirmedEmail).not.toHaveBeenCalled();
     });
@@ -809,6 +850,35 @@ describe('BookingService', () => {
       expect(releasedCount).toBe(2);
       expect(warnSpy).toHaveBeenCalled();
       warnSpy.mockRestore();
+    });
+
+    it('skips released email for perf-tagged bookings when suppression is enabled', async () => {
+      configService.get.mockImplementation((key: string) => {
+        if (key === 'SUPPRESS_PERF_BOOKING_EMAILS') {
+          return 'true';
+        }
+        if (key === 'PERF_BOOKING_PREFIX') {
+          return '[PERF]';
+        }
+        return undefined;
+      });
+      bookingRepository.releaseExpiredNoShows.mockResolvedValue([
+        {
+          ...bookingEntity,
+          id: 'released-perf',
+          title: '[PERF][run-321] release 1',
+          status: BookingStatus.RELEASED,
+          cancelReason:
+            'Booking has been cancelled due to failure to check-in within the grace period.',
+        },
+      ]);
+
+      const releasedCount = await service.releaseExpiredNoShows(
+        new Date('2099-01-01T09:20:00'),
+      );
+
+      expect(releasedCount).toBe(1);
+      expect(notificationService.sendBookingReleasedEmail).not.toHaveBeenCalled();
     });
   });
 });
