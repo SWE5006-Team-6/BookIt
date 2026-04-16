@@ -9,6 +9,11 @@ import {
   type User,
 } from '@prisma/client';
 import { seedTestUsers, TEST_USERS } from '../../integration/support/test-users';
+import {
+  addMinutes,
+  buildCreateSlot,
+  createSingaporeFixtureDate,
+} from './performance-time';
 
 const TARGET_MONTH = '2026-03';
 const REPORT_SEARCH_DATE = '2026-03-15';
@@ -76,10 +81,6 @@ function createBookingId(counter: number) {
   return `00000000-0000-4000-8000-${String(counter).padStart(12, '0')}`;
 }
 
-function createUtcDate(day: number, hour: number, minute = 0) {
-  return new Date(Date.UTC(2026, 2, day, hour, minute, 0, 0));
-}
-
 function createPoolUserId(poolDigit: string, index: number) {
   return `00000000-0000-4000-8${poolDigit}${String(index).padStart(11, '0')}`;
 }
@@ -110,24 +111,6 @@ function toHeaders(user: Pick<User, 'id' | 'email' | 'role'>): PerformanceHeader
     'x-test-user-id': user.id,
     'x-test-email': user.email,
     'x-test-role': user.role,
-  };
-}
-
-function addMinutes(date: Date, minutes: number) {
-  return new Date(date.getTime() + minutes * 60 * 1000);
-}
-
-function buildCreateSlot(now: Date, slotIndex: number, roomCycle: number) {
-  const dayOffset = Math.floor(slotIndex / roomCycle) + 1;
-  const hourOffset = Math.floor(slotIndex / (roomCycle * 3)) % 3;
-  const startAt = new Date(now);
-
-  startAt.setUTCDate(startAt.getUTCDate() + dayOffset);
-  startAt.setUTCHours(9 + hourOffset, 0, 0, 0);
-
-  return {
-    startAt,
-    endAt: addMinutes(startAt, CREATE_SLOT_DURATION_MINUTES),
   };
 }
 
@@ -242,8 +225,8 @@ async function main() {
           roomId: room.id,
           bookedById: ownerId,
           title: `${room.name} confirmed ${week + 1}`,
-          startAt: createUtcDate(offsetDay, baseHour),
-          endAt: createUtcDate(offsetDay, baseHour + 1),
+          startAt: createSingaporeFixtureDate(2026, 2, offsetDay, baseHour),
+          endAt: createSingaporeFixtureDate(2026, 2, offsetDay, baseHour + 1),
           status: BookingStatus.CONFIRMED,
         });
 
@@ -252,10 +235,10 @@ async function main() {
           roomId: room.id,
           bookedById: ownerId,
           title: `${room.name} checked-in ${week + 1}`,
-          startAt: createUtcDate(offsetDay + 1, baseHour),
-          endAt: createUtcDate(offsetDay + 1, baseHour + 1),
+          startAt: createSingaporeFixtureDate(2026, 2, offsetDay + 1, baseHour),
+          endAt: createSingaporeFixtureDate(2026, 2, offsetDay + 1, baseHour + 1),
           status: BookingStatus.CHECKED_IN,
-          checkedInAt: createUtcDate(offsetDay + 1, baseHour, 5),
+          checkedInAt: createSingaporeFixtureDate(2026, 2, offsetDay + 1, baseHour, 5),
         });
 
         bookings.push({
@@ -263,12 +246,12 @@ async function main() {
           roomId: room.id,
           bookedById: ownerId,
           title: `${room.name} released ${week + 1}`,
-          startAt: createUtcDate(offsetDay + 2, baseHour),
-          endAt: createUtcDate(offsetDay + 2, baseHour + 1),
+          startAt: createSingaporeFixtureDate(2026, 2, offsetDay + 2, baseHour),
+          endAt: createSingaporeFixtureDate(2026, 2, offsetDay + 2, baseHour + 1),
           status: BookingStatus.RELEASED,
-          releasedAt: createUtcDate(offsetDay + 2, baseHour, 20),
+          releasedAt: createSingaporeFixtureDate(2026, 2, offsetDay + 2, baseHour, 20),
           releaseReason: 'Performance no-show fixture',
-          cancelledAt: createUtcDate(offsetDay + 2, baseHour, 20),
+          cancelledAt: createSingaporeFixtureDate(2026, 2, offsetDay + 2, baseHour, 20),
           cancelReason: 'Performance no-show fixture',
         });
 
@@ -277,10 +260,10 @@ async function main() {
           roomId: room.id,
           bookedById: ownerId,
           title: `${room.name} cancelled ${week + 1}`,
-          startAt: createUtcDate(offsetDay + 3, baseHour),
-          endAt: createUtcDate(offsetDay + 3, baseHour + 1),
+          startAt: createSingaporeFixtureDate(2026, 2, offsetDay + 3, baseHour),
+          endAt: createSingaporeFixtureDate(2026, 2, offsetDay + 3, baseHour + 1),
           status: BookingStatus.CANCELLED,
-          cancelledAt: createUtcDate(offsetDay + 3, baseHour - 1, 45),
+          cancelledAt: createSingaporeFixtureDate(2026, 2, offsetDay + 3, baseHour - 1, 45),
           cancelReason: 'Performance cancellation fixture',
         });
       }
@@ -298,8 +281,8 @@ async function main() {
         roomId: room.id,
         bookedById: TEST_USERS.user.id,
         title: `${room.name} overlap search`,
-        startAt: createUtcDate(15, 10, 0),
-        endAt: createUtcDate(15, 11, 0),
+        startAt: createSingaporeFixtureDate(2026, 2, 15, 10, 0),
+        endAt: createSingaporeFixtureDate(2026, 2, 15, 11, 0),
         status: BookingStatus.CONFIRMED,
       });
     }
@@ -307,7 +290,12 @@ async function main() {
     for (let index = 0; index < CREATE_BOOKING_ITERATIONS; index += 1) {
       const room = writableRooms[index % writableRooms.length];
       const user = createUsers[index];
-      const slot = buildCreateSlot(seedNow, index, writableRooms.length);
+      const slot = buildCreateSlot(
+        seedNow,
+        index,
+        writableRooms.length,
+        CREATE_SLOT_DURATION_MINUTES,
+      );
 
       createFixtures.push({
         headers: toHeaders(user),
@@ -349,6 +337,7 @@ async function main() {
         seedNow,
         CREATE_BOOKING_ITERATIONS + index,
         writableRooms.length,
+        CREATE_SLOT_DURATION_MINUTES,
       ).startAt;
       const endAt = addMinutes(startAt, CREATE_SLOT_DURATION_MINUTES);
       const bookingId = createBookingId(bookingCounter++);
