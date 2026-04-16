@@ -1,10 +1,9 @@
-name: DAST (OWASP ZAP)
+name: OWASP ZAP (DAST)
 
 on:
   workflow_run:
     workflows: ["Performance Staging (Hosted)"]
     types: [completed]
-    branches: [main]
 
 jobs:
   zap-scan:

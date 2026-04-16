@@ -2,9 +2,8 @@ name: Performance Staging (Hosted)
 
 on:
   workflow_run:
-    workflows: ["Deploy to Staging"]
+    workflows: ["Performance SIT + Deploy to Staging"]
     types: [completed]
-    branches: [main]
 
 concurrency:
   group: performance-staging-hosted
