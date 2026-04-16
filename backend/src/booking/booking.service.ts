@@ -17,6 +17,10 @@ import { BookingPolicyChainService } from '../booking-policy/handlers/booking-po
 import { BookingPolicyRepository } from '../booking-policy/booking-policy.repository';
 import { NotificationService } from '../notification/notification.service';
 import { BookingNotificationData } from './types/booking-notification.types';
+import {
+  getSingaporeParts,
+  parseSingaporeDateTime,
+} from '../common/time/singapore-time';
 
 type BookingNotificationSource = {
   id: string;
@@ -67,9 +71,13 @@ export class BookingService {
   }
 
   async create(dto: CreateBookingDto, bookedById: string) {
-    const startAt = new Date(dto.startAt);
-    const endAt = new Date(dto.endAt);
+    const startAt = parseSingaporeDateTime(dto.startAt);
+    const endAt = parseSingaporeDateTime(dto.endAt);
     const now = new Date();
+
+    if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime())) {
+      throw new BadRequestException('Invalid start or end time');
+    }
 
     if (startAt >= endAt) {
       throw new BadRequestException('Start time must be before end time');
@@ -153,9 +161,15 @@ export class BookingService {
 
     if (dto.startAt || dto.endAt) {
       const startAt = dto.startAt
-        ? new Date(dto.startAt)
+        ? parseSingaporeDateTime(dto.startAt)
         : existingBooking.startAt;
-      const endAt = dto.endAt ? new Date(dto.endAt) : existingBooking.endAt;
+      const endAt = dto.endAt
+        ? parseSingaporeDateTime(dto.endAt)
+        : existingBooking.endAt;
+
+      if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime())) {
+        throw new BadRequestException('Invalid start or end time');
+      }
 
       if (startAt >= endAt) {
         throw new BadRequestException('Start time must be before end time');
@@ -376,18 +390,21 @@ export class BookingService {
   }
 
   private assertWithinWorkingHours(startAt: Date, endAt: Date) {
+    const startParts = getSingaporeParts(startAt);
+    const endParts = getSingaporeParts(endAt);
+
     if (
-      startAt.getFullYear() !== endAt.getFullYear() ||
-      startAt.getMonth() !== endAt.getMonth() ||
-      startAt.getDate() !== endAt.getDate()
+      startParts.year !== endParts.year ||
+      startParts.monthIndex !== endParts.monthIndex ||
+      startParts.day !== endParts.day
     ) {
       throw new BadRequestException(
         'Bookings must start and end on the same day',
       );
     }
 
-    const startMinutes = startAt.getHours() * 60 + startAt.getMinutes();
-    const endMinutes = endAt.getHours() * 60 + endAt.getMinutes();
+    const startMinutes = startParts.hour * 60 + startParts.minute;
+    const endMinutes = endParts.hour * 60 + endParts.minute;
 
     if (
       startMinutes < WORKDAY_START_MINUTES ||
