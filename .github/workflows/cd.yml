@@ -1,4 +1,4 @@
-name: Performance SIT + Deploy to Staging
+name: Deploy to Staging
 
 on:
   workflow_dispatch:
@@ -216,3 +216,19 @@ jobs:
 
             pm2 save
             echo "Deploy complete."
+
+  hosted-staging-performance:
+    name: Performance Staging (Hosted)
+    needs: deploy
+    uses: ./.github/workflows/performance-staging.yml
+    with:
+      ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.ref }}
+    secrets: inherit
+
+  dast:
+    name: OWASP ZAP (DAST)
+    needs: hosted-staging-performance
+    uses: ./.github/workflows/dast.yml
+    with:
+      ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.ref }}
+    secrets: inherit

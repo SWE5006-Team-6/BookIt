@@ -1,9 +1,19 @@
 name: Performance Staging (Hosted)
 
 on:
-  workflow_run:
-    workflows: ["Performance SIT + Deploy to Staging"]
-    types: [completed]
+  workflow_call:
+    inputs:
+      ref:
+        description: Branch, tag, or SHA to test
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag, or SHA to test
+        required: true
+        type: string
+        default: main
 
 concurrency:
   group: performance-staging-hosted
@@ -14,7 +24,6 @@ jobs:
     name: Hosted Staging Performance Gate
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: github.event.workflow_run.conclusion == 'success'
     environment: Staging
     defaults:
       run:
@@ -30,7 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ inputs.ref }}
 
       - uses: actions/setup-node@v4
         with:
