@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       sha:
-        description: Optional commit SHA. Leave blank to auto-select the latest commit on main that passed local perf, hosted staging perf, and DAST.
+        description: Optional commit SHA. Leave blank to auto-select the latest commit on main that passed staging validation.
         required: false
         type: string
 
@@ -27,6 +27,63 @@ jobs:
           script: |
             const inputSha = (process.env.INPUT_SHA || '').trim();
             const { owner, repo } = context.repo;
+            const requiredJobs = [
+              {
+                label: 'Performance SIT (k6)',
+                matches: (name) => name === 'Performance SIT (k6)',
+              },
+              {
+                label: 'Deploy to Staging',
+                matches: (name) => name === 'Deploy to Staging',
+              },
+              {
+                label: 'Performance Staging (Hosted)',
+                matches: (name) =>
+                  name === 'Hosted Staging Performance Gate'
+                  || (
+                    name.includes('Performance Staging (Hosted)')
+                    && name.includes('Hosted Staging Performance Gate')
+                  ),
+              },
+              {
+                label: 'OWASP ZAP (DAST)',
+                matches: (name) =>
+                  name === 'OWASP ZAP Baseline Scan'
+                  || (
+                    name.includes('OWASP ZAP (DAST)')
+                    && name.includes('OWASP ZAP Baseline Scan')
+                  ),
+              },
+            ];
+
+            async function runPassedStagingValidation(runId) {
+              const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+                owner,
+                repo,
+                run_id: runId,
+                per_page: 100,
+              });
+
+              for (const requiredJob of requiredJobs) {
+                const job = jobs.find((candidate) => requiredJob.matches(candidate.name));
+
+                if (!job) {
+                  return {
+                    ok: false,
+                    reason: `missing required job '${requiredJob.label}'`,
+                  };
+                }
+
+                if (job.conclusion !== 'success') {
+                  return {
+                    ok: false,
+                    reason: `job '${job.name}' concluded with '${job.conclusion}'`,
+                  };
+                }
+              }
+
+              return { ok: true };
+            }
 
             if (inputSha) {
               core.info(`Using manually provided SHA: ${inputSha}`);
@@ -34,34 +91,36 @@ jobs:
               return;
             }
 
-            core.info('No SHA provided, selecting latest successful OWASP ZAP (DAST) run on main.');
+            core.info('No SHA provided, selecting latest successful Deploy to Staging run on main that passed all staging validation jobs.');
             const runs = await github.rest.actions.listWorkflowRuns({
               owner,
               repo,
-              workflow_id: 'dast.yml',
+              workflow_id: 'cd.yml',
               branch: 'main',
               status: 'completed',
               per_page: 100,
             });
 
-            const successful = runs.data.workflow_runs.filter(
-              (run) => run.conclusion === 'success',
-            );
+            const successful = runs.data.workflow_runs
+              .filter((run) => run.conclusion === 'success')
+              .sort((left, right) => new Date(right.created_at) - new Date(left.created_at));
 
-            if (successful.length === 0) {
-              core.setFailed(
-                'No successful OWASP ZAP (DAST) runs found on main. Run local perf, staging deploy, hosted staging perf, and DAST first, or provide a SHA manually.',
-              );
+            for (const run of successful) {
+              const validation = await runPassedStagingValidation(run.id);
+
+              if (!validation.ok) {
+                core.info(`Skipping Deploy to Staging run ${run.id} for ${run.head_sha}: ${validation.reason}.`);
+                continue;
+              }
+
+              core.info(`Auto-selected SHA ${run.head_sha} from Deploy to Staging run ${run.id}.`);
+              core.setOutput('target_sha', run.head_sha);
               return;
             }
 
-            const latest = successful.reduce((best, run) => {
-              if (!best) return run;
-              return new Date(run.created_at) > new Date(best.created_at) ? run : best;
-            }, null);
-
-            core.info(`Auto-selected SHA ${latest.head_sha} from OWASP ZAP (DAST) run ${latest.id}.`);
-            core.setOutput('target_sha', latest.head_sha);
+            core.setFailed(
+              'No successful Deploy to Staging runs found on main that passed Performance SIT, deploy, hosted staging performance, and DAST. Run staging validation first, or provide a SHA manually.',
+            );
 
       - name: Checkout repository history
         uses: actions/checkout@v4
@@ -97,65 +156,98 @@ jobs:
           script: |
             const targetSha = process.env.TARGET_SHA;
             const { owner, repo } = context.repo;
-            const requiredWorkflows = [
+            const requiredJobs = [
               {
-                workflow_id: 'cd.yml',
-                label: 'local Performance SIT + staging deploy',
+                label: 'Performance SIT (k6)',
+                matches: (name) => name === 'Performance SIT (k6)',
               },
               {
-                workflow_id: 'performance-staging.yml',
-                label: 'hosted staging performance',
+                label: 'Deploy to Staging',
+                matches: (name) => name === 'Deploy to Staging',
               },
               {
-                workflow_id: 'dast.yml',
+                label: 'Performance Staging (Hosted)',
+                matches: (name) =>
+                  name === 'Hosted Staging Performance Gate'
+                  || (
+                    name.includes('Performance Staging (Hosted)')
+                    && name.includes('Hosted Staging Performance Gate')
+                  ),
+              },
+              {
                 label: 'OWASP ZAP (DAST)',
+                matches: (name) =>
+                  name === 'OWASP ZAP Baseline Scan'
+                  || (
+                    name.includes('OWASP ZAP (DAST)')
+                    && name.includes('OWASP ZAP Baseline Scan')
+                  ),
               },
             ];
 
-            for (const workflow of requiredWorkflows) {
-              const runs = await github.rest.actions.listWorkflowRuns({
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: 'cd.yml',
+              head_sha: targetSha,
+              status: 'completed',
+              per_page: 100,
+            });
+
+            const successfulRuns = runs.data.workflow_runs
+              .filter((run) => run.conclusion === 'success')
+              .sort((left, right) => {
+                if (left.run_number !== right.run_number) {
+                  return right.run_number - left.run_number;
+                }
+
+                return new Date(right.created_at) - new Date(left.created_at);
+              });
+
+            if (successfulRuns.length === 0) {
+              core.setFailed(
+                `No successful Deploy to Staging run found for commit ${targetSha}. Promote only commits that passed staging validation.`,
+              );
+              return;
+            }
+
+            for (const run of successfulRuns) {
+              const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
                 owner,
                 repo,
-                workflow_id: workflow.workflow_id,
-                head_sha: targetSha,
-                status: 'completed',
+                run_id: run.id,
                 per_page: 100,
               });
 
-              const workflowRuns = runs.data.workflow_runs;
+              let failedRequirement = null;
 
-              if (workflowRuns.length === 0) {
-                core.setFailed(
-                  `No completed ${workflow.label} run found for commit ${targetSha}. Promote only commits that passed local perf, hosted staging perf, and DAST.`,
+              for (const requiredJob of requiredJobs) {
+                const job = jobs.find((candidate) => requiredJob.matches(candidate.name));
+
+                if (!job) {
+                  failedRequirement = `missing required job '${requiredJob.label}'`;
+                  break;
+                }
+
+                if (job.conclusion !== 'success') {
+                  failedRequirement = `job '${job.name}' concluded with '${job.conclusion}'`;
+                  break;
+                }
+              }
+
+              if (!failedRequirement) {
+                core.info(
+                  `Validated Deploy to Staging run ${run.id} for commit ${targetSha} with all staging validation jobs successful.`,
                 );
                 return;
               }
 
-              const latestRun = workflowRuns.reduce((latest, run) => {
-                if (!latest) {
-                  return run;
-                }
-
-                if (run.run_number !== latest.run_number) {
-                  return run.run_number > latest.run_number ? run : latest;
-                }
-
-                return new Date(run.created_at) > new Date(latest.created_at)
-                  ? run
-                  : latest;
-              }, null);
-
-              if (latestRun.conclusion !== 'success') {
-                core.setFailed(
-                  `Latest completed ${workflow.label} run ${latestRun.id} for commit ${targetSha} concluded with '${latestRun.conclusion}'.`,
-                );
-                return;
-              }
-
-              core.info(
-                `Validated latest ${workflow.label} run ${latestRun.id} for commit ${targetSha}.`,
-              );
+              core.info(`Skipping Deploy to Staging run ${run.id} for ${targetSha}: ${failedRequirement}.`);
             }
+
+            core.setFailed(
+              `No successful Deploy to Staging run found for commit ${targetSha} with Performance SIT, deploy, hosted staging performance, and DAST all passing.`,
+            );
 
   deploy:
     name: Deploy to Production
