@@ -9,6 +9,9 @@ import { NoopEmailProvider } from './noop-email.provider';
 import { TestAuthGuard } from './test-auth.guard';
 import { TestSupabaseService } from './test-supabase.service';
 
+const SAFE_DATABASE_NAME_PATTERN = /(^|[-_])(integration|test)([-_]|$)/i;
+const UNSAFE_DATABASE_NAME_PATTERN = /(^|[-_])(staging|prod|production)([-_]|$)/i;
+
 const TEST_ENV_DEFAULTS = {
   GMAIL_USER: 'integration-tests@bookit.test',
   GMAIL_CLIENT_ID: 'integration-gmail-client-id',
@@ -23,6 +26,50 @@ export type IntegrationAppContext = {
   app: INestApplication;
   prisma: PrismaService;
 };
+
+export function describeDatabaseTarget(databaseUrl: string) {
+  const parsed = new URL(databaseUrl);
+  const databaseName = parsed.pathname.replace(/^\/+/, '') || '(missing database)';
+
+  return `${parsed.hostname}/${databaseName}`;
+}
+
+export function assertSafeIntegrationDatabaseUrl(databaseUrl: string) {
+  let parsed: URL;
+
+  try {
+    parsed = new URL(databaseUrl);
+  } catch {
+    throw new Error(
+      'DATABASE_URL for backend integration tests must be a valid PostgreSQL connection string.',
+    );
+  }
+
+  if (!['postgres:', 'postgresql:'].includes(parsed.protocol)) {
+    throw new Error(
+      'DATABASE_URL for backend integration tests must use the postgres:// or postgresql:// protocol.',
+    );
+  }
+
+  const databaseName = parsed.pathname.replace(/^\/+/, '');
+  if (!databaseName) {
+    throw new Error(
+      'DATABASE_URL for backend integration tests must include a database name.',
+    );
+  }
+
+  if (UNSAFE_DATABASE_NAME_PATTERN.test(databaseName)) {
+    throw new Error(
+      `Refusing to run backend integration tests against ${describeDatabaseTarget(databaseUrl)} because it looks like a staging/production database.`,
+    );
+  }
+
+  if (!SAFE_DATABASE_NAME_PATTERN.test(databaseName)) {
+    throw new Error(
+      `Refusing to run backend integration tests against ${describeDatabaseTarget(databaseUrl)}. Use a dedicated database whose name clearly includes "integration" or "test".`,
+    );
+  }
+}
 
 export async function createIntegrationApp(): Promise<IntegrationAppContext> {
   ensureIntegrationEnvironment();
@@ -57,13 +104,16 @@ export async function createIntegrationApp(): Promise<IntegrationAppContext> {
 }
 
 function ensureIntegrationEnvironment() {
-  if (!process.env.DATABASE_URL) {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
     throw new Error(
       'DATABASE_URL is required for backend integration tests.',
     );
   }
 
-  process.env.DIRECT_URL ??= process.env.DATABASE_URL;
+  assertSafeIntegrationDatabaseUrl(databaseUrl);
+
+  process.env.DIRECT_URL ??= databaseUrl;
   process.env.NODE_ENV ??= 'test';
 
   for (const [key, value] of Object.entries(TEST_ENV_DEFAULTS)) {
