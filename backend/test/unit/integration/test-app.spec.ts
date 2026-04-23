@@ -20,6 +20,14 @@ describe('integration database safety guard', () => {
     ).not.toThrow();
   });
 
+  it('allows dedicated performance databases', () => {
+    expect(() =>
+      assertSafeIntegrationDatabaseUrl(
+        'postgresql://postgres:postgres@localhost:5432/bookit_performance',
+      ),
+    ).not.toThrow();
+  });
+
   it('rejects staging databases', () => {
     expect(() =>
       assertSafeIntegrationDatabaseUrl(
@@ -33,7 +41,9 @@ describe('integration database safety guard', () => {
       assertSafeIntegrationDatabaseUrl(
         'postgresql://postgres:postgres@localhost:5432/bookit',
       ),
-    ).toThrow('Use a dedicated database whose name clearly includes "integration" or "test"');
+    ).toThrow(
+      'Use a dedicated database whose name clearly includes "integration", "test", or "performance"',
+    );
   });
 
   it('rejects invalid URLs', () => {
