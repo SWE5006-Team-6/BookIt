@@ -9,7 +9,7 @@ import { NoopEmailProvider } from './noop-email.provider';
 import { TestAuthGuard } from './test-auth.guard';
 import { TestSupabaseService } from './test-supabase.service';
 
-const SAFE_DATABASE_NAME_PATTERN = /(^|[-_])(integration|test)([-_]|$)/i;
+const SAFE_DATABASE_NAME_PATTERN = /(^|[-_])(integration|test|performance)([-_]|$)/i;
 const UNSAFE_DATABASE_NAME_PATTERN = /(^|[-_])(staging|prod|production)([-_]|$)/i;
 
 const TEST_ENV_DEFAULTS = {
@@ -66,7 +66,7 @@ export function assertSafeIntegrationDatabaseUrl(databaseUrl: string) {
 
   if (!SAFE_DATABASE_NAME_PATTERN.test(databaseName)) {
     throw new Error(
-      `Refusing to run backend integration tests against ${describeDatabaseTarget(databaseUrl)}. Use a dedicated database whose name clearly includes "integration" or "test".`,
+      `Refusing to run backend integration tests against ${describeDatabaseTarget(databaseUrl)}. Use a dedicated database whose name clearly includes "integration", "test", or "performance".`,
     );
   }
 }
