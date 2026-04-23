@@ -29,8 +29,18 @@ jobs:
       - run: npm run build
         env:
           VITE_API_URL: ${{ github.ref == 'refs/heads/main' && secrets.DEPLOY_API_URL || 'http://localhost:5173' }}
-      - run: npm test
+      - run: npm run test:cov:ci
+        env:
+          VITEST_CI_COVERAGE: '1'
       - run: npm run test:integration
+
+      - name: Upload frontend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+          if-no-files-found: ignore
 
       - name: Upload frontend build
         if: github.ref == 'refs/heads/main'
@@ -63,7 +73,15 @@ jobs:
         run: npm audit --audit-level=high --omit=dev
 
       - run: npm run build
-      - run: npm test
+      - run: npm run test:cov:ci
+
+      - name: Upload backend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage
+          if-no-files-found: ignore
 
       - name: Upload backend build
         if: github.ref == 'refs/heads/main'

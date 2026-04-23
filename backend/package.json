@@ -16,6 +16,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
+    "test:cov:ci": "jest --coverage --runInBand",
     "test:integration": "jest --config ./test/jest-integration.json --runInBand",
     "test:performance": "k6 run ./test/performance/sit-baseline.js",
     "test:performance:seed": "ts-node ./test/performance/support/seed-performance.ts",
@@ -101,6 +102,7 @@
     ],
     "coverageDirectory": "coverage",
     "coverageReporters": [
+      "json-summary",
       "text",
       "lcov"
     ],

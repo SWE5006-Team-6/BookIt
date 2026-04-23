@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { BookingStatus } from '@prisma/client';
+import { BookingPolicyService } from '../../src/booking-policy/booking-policy.service';
 import { createIntegrationApp } from './support/test-app';
 import { authHeaders, seedTestUsers, TEST_USERS } from './support/test-users';
 import { resetDatabase } from './support/reset-database';
@@ -12,7 +13,8 @@ describe('Booking lifecycle integration', () => {
   });
 
   beforeEach(async () => {
-    await resetDatabase(context.prisma);
+    await resetDatabase(context.prisma, { includePolicies: true });
+    await context.app.get(BookingPolicyService).seedDefaults();
     await seedTestUsers(context.prisma);
   });
 

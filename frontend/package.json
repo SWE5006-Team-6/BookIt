@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:integration": "vitest run --config vite.integration.config.ts",
     "test:watch": "vitest",
-    "test:cov": "vitest run --coverage"
+    "test:cov": "vitest run --coverage",
+    "test:cov:ci": "vitest run --coverage"
   },
   "dependencies": {
     "@chakra-ui/react": "^3.32.0",
