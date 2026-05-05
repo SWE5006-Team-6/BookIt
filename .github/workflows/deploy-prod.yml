@@ -304,7 +304,7 @@ jobs:
       - name: Ensure deploy directories exist on EC2
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST \
-            "mkdir -p ~/BookIt/backend ~/BookIt/frontend"
+            "mkdir -p ~/BookIt/backend ~/BookIt/frontend ~/BookIt/deploy/nginx"
 
       - name: Copy backend to EC2
         run: |
@@ -315,8 +315,14 @@ jobs:
       - name: Copy frontend to EC2
         run: |
           rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            frontend/dist frontend/package.json frontend/package-lock.json \
+            frontend/dist frontend/package.json frontend/package-lock.json frontend/serve.json \
             $EC2_USER@$EC2_HOST:~/BookIt/frontend/
+
+      - name: Copy nginx security config to EC2
+        run: |
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            deploy/nginx/ \
+            $EC2_USER@$EC2_HOST:~/BookIt/deploy/nginx/
 
       - name: Install deps and restart on EC2
         uses: appleboy/ssh-action@v1.0.3
@@ -340,6 +346,11 @@ jobs:
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             nvm use default
 
+            sudo mkdir -p /etc/nginx/conf.d
+            sudo cp ~/BookIt/deploy/nginx/bookit-security-headers.conf /etc/nginx/conf.d/bookit-security-headers.conf
+            sudo nginx -t
+            sudo systemctl reload nginx
+
             cd ~/BookIt/backend
             npm ci --omit=dev
             npx --yes prisma generate
@@ -349,7 +360,7 @@ jobs:
             cd ~/BookIt/frontend
             npm ci --omit=dev
             pm2 delete bookit-frontend 2>/dev/null || true
-            pm2 start "npx serve dist -l 3000" --name bookit-frontend
+            pm2 start "npx serve --config serve.json dist -l 3000" --name bookit-frontend
 
             pm2 save
             echo "Deploy complete."
