@@ -27,10 +27,7 @@ export function applySecurityHeaders(app: INestApplication): void {
       crossOriginOpenerPolicy: { policy: 'same-origin' },
       crossOriginResourcePolicy: { policy: 'same-origin' },
       frameguard: { action: 'deny' },
-      hsts: {
-        maxAge: 31_536_000,
-        includeSubDomains: true,
-      },
+      hsts: false,
       referrerPolicy: { policy: 'no-referrer' },
     }),
   );
