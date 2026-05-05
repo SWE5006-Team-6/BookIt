@@ -1,24 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { applySecurityHeaders } from './security/security-headers';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.use(
-    helmet({
-      crossOriginEmbedderPolicy: { policy: 'credentialless' },
-    }),
-  );
-
-  app.use((_req, res, next) => {
-    res.setHeader(
-      'Permissions-Policy',
-      'camera=(), microphone=(), geolocation=()',
-    );
-    next();
-  });
+  applySecurityHeaders(app);
 
   app.enableCors({
     origin: process.env.CORS_ORIGIN || '*',
