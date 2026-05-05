@@ -223,7 +223,7 @@ jobs:
 
             cd ~/BookIt/frontend
             pm2 delete bookit-frontend 2>/dev/null || true
-            pm2 start "npx serve --config serve.json dist -l 3000" --name bookit-frontend
+            pm2 start npx --name bookit-frontend -- --yes serve --config serve.json dist -l 3000
 
             pm2 save
             echo "Deploy complete."
