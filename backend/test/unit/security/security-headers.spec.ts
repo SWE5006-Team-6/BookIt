@@ -67,8 +67,6 @@ describe('security headers', () => {
     expect(response.headers['cross-origin-resource-policy']).toBe(
       'same-origin',
     );
-    expect(response.headers['strict-transport-security']).toBe(
-      'max-age=31536000; includeSubDomains',
-    );
+    expect(response.headers['strict-transport-security']).toBeUndefined();
   });
 });

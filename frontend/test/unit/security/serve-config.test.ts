@@ -59,9 +59,7 @@ describe('serve.json security headers', () => {
     expect(headers.get('Cross-Origin-Embedder-Policy')).toBe('require-corp');
     expect(headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin');
     expect(headers.get('Cross-Origin-Resource-Policy')).toBe('same-origin');
-    expect(headers.get('Strict-Transport-Security')).toBe(
-      'max-age=31536000; includeSubDomains',
-    );
+    expect(headers.has('Strict-Transport-Security')).toBe(false);
     expect(headers.get('Referrer-Policy')).toBe('no-referrer');
   });
 
