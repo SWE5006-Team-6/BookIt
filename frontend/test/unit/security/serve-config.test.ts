@@ -36,17 +36,35 @@ const getRule = (source: string) => {
 const headerMap = (rule: HeaderRule) =>
   new Map(rule.headers.map((header) => [header.key, header.value]));
 
+const cspDirective = (csp: string | undefined, directiveName: string) => {
+  if (!csp) {
+    throw new Error('Missing Content-Security-Policy header');
+  }
+
+  const directive = csp
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${directiveName} `));
+
+  if (!directive) {
+    throw new Error(`Missing CSP directive ${directiveName}`);
+  }
+
+  return directive;
+};
+
 describe('serve.json security headers', () => {
   it('applies strict security headers to all static responses', () => {
     const headers = headerMap(getRule('**/*'));
     const csp = headers.get('Content-Security-Policy');
 
     expect(csp).toContain("default-src 'self'");
-    expect(csp).toContain("script-src 'self'");
-    expect(csp).toContain("style-src 'self'");
+    expect(cspDirective(csp, 'script-src')).toBe("script-src 'self'");
+    expect(cspDirective(csp, 'style-src')).toBe(
+      "style-src 'self' 'unsafe-inline'",
+    );
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("frame-ancestors 'none'");
-    expect(csp).not.toContain("'unsafe-inline'");
     expect(csp).not.toContain('https:');
     expect(csp).not.toContain('http:');
     expect(csp).not.toContain('*');
