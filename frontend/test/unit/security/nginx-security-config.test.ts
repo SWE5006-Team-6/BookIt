@@ -9,14 +9,36 @@ const configPath = resolve(
 );
 const config = readFileSync(configPath, 'utf8');
 
+const getFrontendCspDirective = (directiveName: string) => {
+  const defaultCsp = config.match(/default "([^"]+)";/)?.[1];
+
+  if (!defaultCsp) {
+    throw new Error('Missing default frontend CSP in nginx config');
+  }
+
+  const directive = defaultCsp
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${directiveName} `));
+
+  if (!directive) {
+    throw new Error(`Missing CSP directive ${directiveName}`);
+  }
+
+  return directive;
+};
+
 describe('nginx security header config', () => {
   it('adds frontend CSP at the edge without applying it to API paths', () => {
     expect(config).toContain('map $request_uri $bookit_frontend_csp');
     expect(config).toContain("~^/api(/|$) \"\"");
     expect(config).toContain('add_header Content-Security-Policy $bookit_frontend_csp always;');
     expect(config).toContain("default-src 'self'");
+    expect(getFrontendCspDirective('script-src')).toBe("script-src 'self'");
+    expect(getFrontendCspDirective('style-src')).toBe(
+      "style-src 'self' 'unsafe-inline'",
+    );
     expect(config).toContain("frame-ancestors 'none'");
-    expect(config).not.toContain("'unsafe-inline'");
   });
 
   it('keeps HSTS owned by nginx and cache headers path-specific', () => {

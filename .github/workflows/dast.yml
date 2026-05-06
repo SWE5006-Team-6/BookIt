@@ -29,7 +29,7 @@ jobs:
         uses: zaproxy/action-baseline@v0.14.0
         with:
           target: "${{ secrets.CORS_ORIGIN }}"
-          rules_file_name: ".zap/rules.tsv"
+          rules_file_name: ".zap/rules-frontend.tsv"
           allow_issue_writing: false
           fail_action: false
           artifact_name: zap-frontend
@@ -38,7 +38,7 @@ jobs:
         uses: zaproxy/action-baseline@v0.14.0
         with:
           target: "${{ secrets.DEPLOY_API_URL }}/api"
-          rules_file_name: ".zap/rules.tsv"
+          rules_file_name: ".zap/rules-backend.tsv"
           allow_issue_writing: false
           fail_action: false
           artifact_name: zap-backend
