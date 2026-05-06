@@ -1,5 +1,5 @@
 10035	WARN	(Strict-Transport-Security must be present on HTTPS staging/prod responses)
-10055	IGNORE	(Frontend CSP allows style-src unsafe-inline for Chakra UI/Emotion runtime style injection; script-src remains strict)
+10055	IGNORE	(CSP style-src unsafe-inline is accepted on frontend/static responses for Chakra UI/Emotion runtime style injection; API CSP remains strict and covered by backend security header tests)
 10109	IGNORE	(Modern Web Application - purely informational, no changes required)
 10015	IGNORE	(Cache-control directive review is informational; API responses use no-store and static caching is intentional)
 10049	IGNORE	(Storable and Cacheable Content - informational, static assets are meant to be cached)
